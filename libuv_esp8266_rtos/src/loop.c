@@ -27,6 +27,7 @@ run_signal_handling (fsm_t* this){
     if(p_this->n_active_signal_handlers > 0){
         for(int i = 0; i < p_this->n_active_signal_handlers; i++){
             uv_create_task_signal(p_this->active_signal_handlers[i]);
+            p_this->n_signal_handlers_run++;
         }
     }
 }
@@ -37,7 +38,7 @@ fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 {
 	static fsm_trans_t loopFSM_tt[] = {
         { IDLE, NULL, SIGNAL, run_signal_handling},
-        // { SIGNAL, CHECK_ALL_SIG_HANDLERS_RUN, NEXT_STATE, run_next_state_handling },
+        { SIGNAL, check_all_sig_handlers_run, SIGNAL, run_signal_handling },
 		{ -1, NULL, -1, NULL},
 	};
 

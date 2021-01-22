@@ -36,16 +36,19 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
   handle->signal_cb = signal_cb;
   handle->signum = signum;
 
+  // Set signum pin as input
+  GPIO_AS_INPUT(signum);
+
   // If we have achieved to get here, create new handle and add it to signal_handlers 
   uv_signal_t** handlers = handle->loop->active_signal_handlers;
   int i = handle->loop->n_active_signal_handlers; // array index
 
   if(handle->loop->n_active_signal_handlers == 0){
     *handlers = malloc(sizeof(uv_signal_t));
-    memcpy(**handlers, handle, sizeof(uv_signal_t));
+    memcpy((uv_signal_t*)handlers[0], handle, sizeof(uv_signal_t));
   } else {
     *handlers = realloc(*handlers, sizeof(uv_signal_t));
-    memcpy(*handlers[i], handle, sizeof(uv_signal_t));
+    memcpy((uv_signal_t*)handlers[i], handle, sizeof(uv_signal_t));
   }
 
   handle->loop->n_active_signal_handlers++;

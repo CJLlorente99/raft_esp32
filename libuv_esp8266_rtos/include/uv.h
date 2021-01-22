@@ -7,10 +7,16 @@
 #include <stdbool.h>
 
 #include "fsm.h"
+#include "gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "loop.h"
+#include "esp_common.h"
 
 // Some global constants
 
 #define SIGNAL_TASK_PRIORITY 4
+#define LOOP_RATE_MS 100
 
 // Callbacks declaration and definition
 
@@ -29,7 +35,7 @@ typedef struct signal_cb_param {
 typedef struct uv_signal_t {
   loopFSM_t* loop;
   uv_signal_cb signal_cb;
-  int signum;
+  int signum; // indicates pin
 } uv_signal_t;
 
 typedef struct uv_loop_t {
