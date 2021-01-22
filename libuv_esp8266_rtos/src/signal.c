@@ -1,5 +1,4 @@
 #include "uv.h"
-#include "loop.h"
 
 // EL UNICO USO QUE SE HACE DEL SIGNAL EN RAFT ES PARA CAPTAR SEÑALES DE INTERRUPCION
 // GENERADAS POR EL USER
@@ -24,8 +23,9 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
   // If handler array exists, do some check
   if(handle->loop->active_signal_handlers){
     // Check if handler with same signum
+    uv_signal_t** handlers = handle->loop->active_signal_handlers;
     for(int i = 0; i < handle->loop->n_active_signal_handlers; i++){
-      if(handle->loop->active_signal_handlers[i]->signum == signum){
+      if(handlers[i]->signum == signum){
         handle->signal_cb = signal_cb;
         return 0;
       }
