@@ -44,6 +44,7 @@ struct uv_signal_s {
   loopFSM_t* loop;
   uv_signal_cb signal_cb;
   int signum; // indicates pin
+  unsigned int is_active : 1;
 };
 
 struct uv_loop_s {
