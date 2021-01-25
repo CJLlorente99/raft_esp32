@@ -8,6 +8,7 @@
 
 void
 uv_create_task_signal (uv_signal_t* handle){
-    signal_cb_param_t parameters = { handle, handle->signum };
-    xTaskCreate((void*)(handle->signal_cb), "signal", 2048, (void*) &parameters, SIGNAL_TASK_PRIORITY, NULL);
+    // signal_cb_param_t parameters = { handle, handle->signum };
+    // xTaskCreate((void*)(handle->signal_cb), "signal", 2048, (void*) &parameters, SIGNAL_TASK_PRIORITY, NULL);
+    handle->signal_cb(handle, handle->signum);
 }

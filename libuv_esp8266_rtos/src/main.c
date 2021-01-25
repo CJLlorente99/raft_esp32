@@ -27,25 +27,29 @@ main(void* ignore){
 
     // Init loop
     uv_loop_t* loop;
+    int rv;
 
-    if(uv_loop_init(loop)){
+    rv = uv_loop_init(loop);
+    if(rv != 0){
         // do something because error has been caused
     }
 
     // Init signal handle
     uv_signal_t* signal_handle;
 
-    if(uv_signal_init(loop, signal_handle)){
+    rv = uv_signal_init(loop, signal_handle);
+    if(rv != 0){
         // do something because error has been caused
     }
 
-    if(uv_signal_start(signal_handle, test_callback, INPUT_TEST_PORT)){
+    rv = uv_signal_start(signal_handle, test_callback, INPUT_TEST_PORT);
+    if(rv != 0){
         // do something because error has been caused
     }
 
-    while(true){
-        vTaskDelay(1000/LOOP_RATE_MS);
-        fsm_fire(loop->loopFSM);
+    rv = uv_run(loop);
+    if(rv != 0){
+        // do something because error has been caused
     }
 
     vTaskDelete(NULL);

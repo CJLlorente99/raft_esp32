@@ -71,6 +71,14 @@ uv_now(const uv_loop_t* loop){
     return this->time;
 }
 
+int
+uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is used in raft
+    while(true){
+        vTaskDelay(LOOP_RATE_MS/portTICK_RATE_MS);
+        fsm_fire(loop->loopFSM);
+    }
+}
+
 void
 uv_update_time(loopFSM_t* loop){
     loop->time = system_get_time();
