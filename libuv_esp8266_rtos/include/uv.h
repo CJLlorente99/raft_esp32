@@ -21,6 +21,7 @@
 
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
+typedef struct uv_timer_s uv_timer_t;
 
 typedef struct signal_cb_param_s signal_cb_param_t;
 
@@ -29,6 +30,7 @@ typedef struct loopFSM_s loopFSM_t;
 // Callbacks declaration and definition
 
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
+typedef void (*uv_timer_cb)(uv_timer_t* handle);
 
 // Structs for parameters to create task
 
@@ -40,11 +42,17 @@ struct signal_cb_param_s {
 
 // Types definition
 
+struct uv_timer_s {
+  uv_loop_t* loop;
+  uv_timer_cb timer_cb;
+  unsigned int timeout;
+  unsigned int repeat : 1;
+};
+
 struct uv_signal_s {
-  loopFSM_t* loop;
+  uv_loop_t* loop;
   uv_signal_cb signal_cb;
   int signum; // indicates pin
-  unsigned int is_active : 1;
 };
 
 struct uv_loop_s {
@@ -61,6 +69,9 @@ struct loopFSM_s
   uv_signal_t** active_signal_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
   unsigned int n_active_signal_handlers; // number of signal handlers
   unsigned int n_signal_handlers_run; // number of signal handlers that have been run
+
+  uv_timer_t** active_timer_handlers;
+  unsigned int n_active_timer_handlers;
 };
 
 // Some function prototypes

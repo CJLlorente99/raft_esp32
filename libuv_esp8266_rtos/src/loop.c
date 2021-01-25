@@ -33,10 +33,8 @@ run_signal_handling (fsm_t* this){
     uv_update_time(p_this);
     if(p_this->n_active_signal_handlers > 0){
         for(int i = 0; i < p_this->n_active_signal_handlers; i++){
-            p_this->active_signal_handlers[i]->is_active = 1;
             uv_create_task_signal(p_this->active_signal_handlers[i]);
             p_this->n_signal_handlers_run++;
-            p_this->active_signal_handlers[i]->is_active = 0;
         }
     }
 }
