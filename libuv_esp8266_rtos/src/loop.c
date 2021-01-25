@@ -7,8 +7,7 @@ enum states {
 };
 
 // Checking functions (static int that return either 1 or 0)
-// Hace falta locks?? Los handlers inician task que se ejecutan asincronamente
-// podría haber problemas
+// Hace falta locks??
 static int
 check_all_sig_handlers_run (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
