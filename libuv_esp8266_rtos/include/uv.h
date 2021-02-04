@@ -8,6 +8,7 @@
 
 #include "fsm.h"
 #include "gpio.h"
+#include "freertos/timers.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_common.h"
@@ -44,6 +45,7 @@ struct signal_cb_param_s {
 
 struct uv_timer_s {
   uv_loop_t* loop;
+  os_timer_t* timer;
   uv_timer_cb timer_cb;
   unsigned int timeout;
   unsigned int repeat : 1;
@@ -77,5 +79,28 @@ struct loopFSM_s
 // Some function prototypes
 
 void uv_update_time (loopFSM_t* loop);
+
+// Timer function protypes
+
+int uv_timer_init(uv_loop_t* loop_s, uv_timer_t* handle);
+int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat);
+int uv_timer_stop(uv_timer_t* handle);
+
+// Signal function prototypes
+
+int uv_signal_init (uv_loop_t* loop, uv_signal_t* handle);
+int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum);
+int uv_signal_stop(uv_signal_t* handle);
+
+// Core function protypes
+
+void uv_create_task_signal (uv_signal_t* handle);
+
+// Loop function prototypes
+
+int uv_loop_init (uv_loop_t* loop);
+int uv_loop_close (uv_loop_t* loop);
+uint32_t uv_now(const uv_loop_t* loop);
+int uv_run (uv_loop_t* loop);
 
 #endif /* UV_H */

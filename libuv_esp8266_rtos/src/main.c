@@ -6,6 +6,8 @@ To be verified
 
 #include "uv.h"
 
+// SIGNAL TEST
+
 #define INPUT_TEST_PORT 4
 #define LED_TEST_PORT 5
 
@@ -19,7 +21,7 @@ test_callback (uv_signal_t* handle, int signum){
 }
 
 void
-main(void* ignore){
+main_signal(void* ignore){
 
     // Configure GPIO
     GPIO_AS_OUTPUT(LED_TEST_PORT);
@@ -48,6 +50,75 @@ main(void* ignore){
     }
 
     rv = uv_run(loop);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    vTaskDelete(NULL);
+}
+
+// TIMER TEST
+
+#define ONE_SHOT_CLOCK_TRIGGER_PORT 15
+#define LED_ONE_SHOT_PORT 17
+#define LED_TWO_SEC_PORT 18
+#define LED_HALF_SEC_PORT 19
+
+void
+one_shot_callback (uv_timer_t* handle){
+    GPIO_OUTPUT_SET(LED_ONE_SHOT_PORT,1);
+    vTaskDelay(250/portTICK_RATE_MS);
+    GPIO_OUTPUT_SET(LED_ONE_SHOT_PORT,0);
+}
+
+void
+two_sec_callback (uv_timer_t* handle){
+    GPIO_OUTPUT_SET(LED_TWO_SEC_PORT,1);
+    vTaskDelay(250/portTICK_RATE_MS);
+    GPIO_OUTPUT_SET(LED_TWO_SEC_PORT,0);
+}
+
+void
+half_sec_callback (uv_timer_t* handle){
+    GPIO_OUTPUT_SET(LED_HALF_SEC_PORT,1);
+    vTaskDelay(250/portTICK_RATE_MS);
+    GPIO_OUTPUT_SET(LED_HALF_SEC_PORT,0);
+}
+
+void
+main_timer(void* ignore){
+
+    // Configure GPIO
+    GPIO_AS_OUTPUT(LED_HALF_SEC_PORT);
+    GPIO_AS_OUTPUT(LED_ONE_SHOT_PORT);
+    GPIO_AS_OUTPUT(LED_TWO_SEC_PORT);
+    GPIO_AS_INPUT(ONE_SHOT_CLOCK_TRIGGER_PORT);
+
+    // Init loop
+    uv_loop_t* loop;
+    int rv;
+
+    rv = uv_loop_init(loop);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    // Init timers
+    uv_timer_t* timer_two_sec;
+    uv_timer_t* timer_half_sec;
+    uv_timer_t* timer_one_shot;
+
+    rv = uv_timer_init(loop, timer_two_sec);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    rv = uv_timer_init(loop, timer_one_shot);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    rv = uv_timer_init(loop, timer_half_sec);
     if(rv != 0){
         // do something because error has been caused
     }
@@ -106,5 +177,5 @@ uint32_t user_rf_cal_sector_set(void)
 *******************************************************************************/
 void user_init(void)
 {
-    xTaskCreate(&main, "startup", 2048, NULL, 1, NULL);
+    xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
 }

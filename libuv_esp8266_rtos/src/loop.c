@@ -80,7 +80,14 @@ uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is us
     }
 }
 
-void
+static void
 uv_update_time(loopFSM_t* loop){
     loop->time = system_get_time();
+}
+
+void
+uv_create_task_signal (uv_signal_t* handle){
+    // signal_cb_param_t parameters = { handle, handle->signum };
+    // xTaskCreate((void*)(handle->signal_cb), "signal", 2048, (void*) &parameters, SIGNAL_TASK_PRIORITY, NULL);
+    handle->signal_cb(handle, handle->signum);
 }

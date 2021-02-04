@@ -19,9 +19,12 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
         uv_timer_stop(handle);
 
     */
+    os_timer_t* new_timer;  
+
     handle->timer_cb = cb;
     handle->timeout = timeout;
     handle->repeat = repeat;
+    handle->timer = new_timer;
 
     // If we have achieved to get here, create new handle and add it to signal_handlers 
     uv_timer_t** handlers = loop->active_timer_handlers;
@@ -37,7 +40,17 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
 
     loop->n_active_timer_handlers++;
 
-    // Activate timer
+    // Create timers
+    // PROBLEMA CON xTimerCreate. SE DEBE INTRODUCIR CB DE TIPO TIMERCALLBACKFUNCTION_T.
+    // COMO HAGO PARA QUE SE LLAME A HANDLE->TIMER_CB
+    
+    // repeat = 0 === one-shot?
+    
+    os_timer_arm(handle->timer, (uint32_t) handle->timeout, handle->repeat);
+    os_timer_setfn(handle->timer, handle->timer_cb, (void*)handle);
+    // What is recommended os_timer_arm or xTimerCreate?
+
+    // Timer should be started upon loop start
 
     return 0;
 }
@@ -58,14 +71,15 @@ uv_timer_stop(uv_timer_t* handle){
     // Add handlers, except from the one stopped
     int j = 0;
     for(int i = 0; i < loop->n_active_timer_handlers; i++){
-    if(loop->active_timer_handlers[i] != handle){
-        memcpy((uv_timer_t*)new_handlers[j], loop->active_timer_handlers[i], sizeof(uv_timer_t));
-        j++;
-    }
+        if(loop->active_timer_handlers[i] != handle){
+            memcpy((uv_timer_t*)new_handlers[j], loop->active_timer_handlers[i], sizeof(uv_timer_t));
+            j++;
+        }
     }
 
     // Exchange in loop structure
     loop->active_timer_handlers = new_handlers;
 
     // Delete timer (xTimerDelete())
+    os_timer_disarm(handle->timer);
 }
