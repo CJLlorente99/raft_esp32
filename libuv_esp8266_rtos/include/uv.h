@@ -8,9 +8,9 @@
 
 #include "fsm.h"
 #include "gpio.h"
-#include "freertos/timers.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_timer.h"
 #include "esp_common.h"
 
 // Some global constants

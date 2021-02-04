@@ -67,7 +67,7 @@ main_signal(void* ignore){
 void
 one_shot_callback (uv_timer_t* handle){
     GPIO_OUTPUT_SET(LED_ONE_SHOT_PORT,1);
-    vTaskDelay(250/portTICK_RATE_MS);
+    vTaskDelay(1000/portTICK_RATE_MS);
     GPIO_OUTPUT_SET(LED_ONE_SHOT_PORT,0);
 }
 
@@ -119,6 +119,21 @@ main_timer(void* ignore){
     }
 
     rv = uv_timer_init(loop, timer_half_sec);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    rv = uv_timer_start(timer_two_sec, two_sec_callback, 2000, 1);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    rv = uv_timer_start(timer_half_sec, half_sec_callback, 500, 1);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    rv = uv_run(loop);
     if(rv != 0){
         // do something because error has been caused
     }
@@ -177,5 +192,5 @@ uint32_t user_rf_cal_sector_set(void)
 *******************************************************************************/
 void user_init(void)
 {
-    xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
+    xTaskCreate(&main_timer, "startup", 2048, NULL, 1, NULL);
 }

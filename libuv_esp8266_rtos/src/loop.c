@@ -80,7 +80,7 @@ uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is us
     }
 }
 
-static void
+void
 uv_update_time(loopFSM_t* loop){
     loop->time = system_get_time();
 }

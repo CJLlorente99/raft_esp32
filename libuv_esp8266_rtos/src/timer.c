@@ -47,7 +47,7 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
     // repeat = 0 === one-shot?
     
     os_timer_arm(handle->timer, (uint32_t) handle->timeout, handle->repeat);
-    os_timer_setfn(handle->timer, handle->timer_cb, (void*)handle);
+    os_timer_setfn(handle->timer, (os_timer_func_t*)handle->timer_cb, (void*)handle);
     // What is recommended os_timer_arm or xTimerCreate?
 
     // Timer should be started upon loop start
