@@ -39,7 +39,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
     *handlers = malloc(sizeof(uv_signal_t));
     memcpy((uv_signal_t*)handlers[0], handle, sizeof(uv_signal_t));
   } else {
-    *handlers = realloc(*handlers, sizeof(uv_signal_t));
+    *handlers = realloc(*handlers, sizeof(uv_signal_t[i]));
     memcpy((uv_signal_t*)handlers[i], handle, sizeof(uv_signal_t));
   }
 

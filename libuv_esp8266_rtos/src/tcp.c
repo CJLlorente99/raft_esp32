@@ -1,9 +1,30 @@
 #include "uv.h"
 
 int
-uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp){
-    uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP); // this should initialize tcp's watcher
-    tcp->loop = loop;
+uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
+    // no hace falta crear una funcion como tal ya que uv__stream_init solo se usa aqui
+    tcp->loop = loop_s;
+
+    loopFSM_t* loop = loop_s->loopFSM->user_data;
+
+    tcp->alloc_cb = NULL;
+    tcp->close_cb = NULL;
+    tcp->connection_cb = NULL;
+    tcp->read_cb = NULL;
+
+    // add handler to handler list in loop
+    uv_stream_t** handlers = loop->active_stream_handlers;
+    int i = loop->n_active_stream_handlers; // array index
+
+    if(loop->n_active_stream_handlers == 0){
+    *handlers = malloc(sizeof(uv_stream_t));
+    memcpy((uv_stream_t*)handlers[0], (uv_stream_t*) tcp, sizeof(uv_stream_t));
+    } else {
+    *handlers = realloc(*handlers, sizeof(uv_stream_t[i]));
+    memcpy((uv_stream_t*)handlers[i], (uv_stream_t*) tcp, sizeof(uv_stream_t));
+    }
+
+    loop->n_active_stream_handlers++;
 }
 
 int
