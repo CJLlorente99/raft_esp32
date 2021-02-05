@@ -23,6 +23,8 @@
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
 typedef struct uv_timer_s uv_timer_t;
+typedef struct uv_tcp_s uv_tcp_t;
+typedef struct uv_stream_s uv_stream_t;
 
 typedef struct signal_cb_param_s signal_cb_param_t;
 
@@ -42,6 +44,14 @@ struct signal_cb_param_s {
 
 
 // Types definition
+
+struct uv_tcp_s {
+  uv_loop_t* loop;
+};
+
+struct uv_stream_s {
+
+};
 
 struct uv_timer_s {
   uv_loop_t* loop;
