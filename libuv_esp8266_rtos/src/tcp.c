@@ -22,7 +22,7 @@ int
 uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr, uv_connect_cb cb){
     // this function connects the socket in handle to addr in sockeaddr
     // once connection is completed callback is triggered (added to the correspondant state in loop FSM to be executed once)
-    // adds a watcher on the connection (add to the loop in watcher state)
+    // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
 }
 
 int
