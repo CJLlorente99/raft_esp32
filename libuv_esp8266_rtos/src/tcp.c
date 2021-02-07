@@ -1,5 +1,23 @@
 #include "uv.h"
 
+/*
+    En vez de centrarme tanto en como se hace en el libuv original. Sería posible
+    hacerlo con una estructura reactor.
+
+    uv_tcp
+        tcp_init -> inicializa el reactor (se llama desde el loop base)
+        tcp_close -> quitar el reactor del loop base
+        tcp_bind -> crea un socket y lo une a una direccion (esta info se añade en el objeto tcp)
+        tcp_connect -> conecta el socket con una direccion (añadir conexiones a un objeto tcp)
+
+    uv_stream
+        listen -> habilitar la escucha de nuevas conexiones entrantes (habilita que el reactor mire una conexion). Se guardan "backlog" conexiones
+        accept -> acepta las conexiones de listen (habilita que el rector comience a aceptar)
+        read_start -> comienza a leer hasta que no hay más que leer o read_stop es llamado (habilita al reactor a leer)
+        read_stop -> parar de leer (deshabilita la lectura)
+        write -> escribir
+*/
+
 int
 uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     // no hace falta crear una funcion como tal ya que uv__stream_init solo se usa aqui
