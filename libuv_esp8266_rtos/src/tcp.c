@@ -1,6 +1,8 @@
 #include "uv.h"
 
 /*
+    usar librería FreeRTOS+TCP?
+
     En vez de centrarme tanto en como se hace en el libuv original. Sería posible
     hacerlo con una estructura reactor.
 
@@ -62,9 +64,4 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     // this function connects the socket in handle to addr in sockeaddr
     // once connection is completed callback is triggered (added to the correspondant state in loop FSM to be executed once)
     // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
-}
-
-int
-uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp){
-    // close socket, pull out watcher
 }

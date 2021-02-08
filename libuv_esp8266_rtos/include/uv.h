@@ -24,9 +24,12 @@ typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_tcp_s uv_tcp_t;
-typedef struct uv_timer_s uv_stream_t;
+typedef struct uv_tcp_s uv_stream_t;
 typedef struct uv_buf_s uv_buf_t;
 typedef struct uv_check_s uv_check_t;
+typedef struct uv_tcp_s uv_handle_t;
+typedef struct uv_write_s uv_write_t;
+typedef struct uv_connect_s uv_connect_t;
 
 typedef struct signal_cb_param_s signal_cb_param_t;
 
@@ -45,6 +48,8 @@ typedef void (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
 typedef void (*uv_connection_cb)(uv_stream_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
+typedef void (*uv_write_cb)(uv_write_t* req, int status);
+typedef void (*uv_connection_cb)(uv_connect_t* req, int status);
 
 // For check purposes
 typedef void (*uv_check_cb)(uv_check_t* handle);
@@ -59,6 +64,14 @@ struct signal_cb_param_s {
 
 
 /// Types definition
+
+struct uv_write_s {
+
+};
+
+typedef uv_connect_s {
+
+};
 
 struct uv_check_s {
     uv_loop_t* loop;

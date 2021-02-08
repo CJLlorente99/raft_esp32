@@ -145,6 +145,8 @@ uv_create_task_signal (uv_signal_t* handle){
 void
 uv_create_task_stream (uv_stream_t* handle){
     // call the reactor
+    // some precaution is needed as raft frees up tcp without any additional procedure
+    // check if ptr is not null before doing whatever
 }
 
 void
