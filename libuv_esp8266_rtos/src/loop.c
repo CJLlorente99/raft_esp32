@@ -3,8 +3,9 @@
 // FSM states
 enum states {
     IDLE,
+    CHECK,
     SIGNAL,
-    STREAM
+    STREAM,
 };
 
 // Checking functions (static int that return either 1 or 0)
@@ -24,6 +25,16 @@ check_all_stream_handlers_run (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
     if(p_this->n_active_stream_handlers == p_this->n_stream_handlers_run){
         p_this->n_stream_handlers_run = 0;
+        return 1;
+    }
+    return 0;
+}
+
+static int
+check_all_check_handlers_run (fsm_t* this){
+    loopFSM_t* p_this = this->user_data;
+    if(p_this->n_active_check_handlers == p_this->n_check_handlers_run){
+        p_this->n_check_handlers_run = 0;
         return 1;
     }
     return 0;
@@ -62,14 +73,28 @@ run_stream_handling (fsm_t* this){
     }
 }
 
+static void
+run_check_handling (fsm_t* this){
+    loopFSM_t* p_this = this->user_data;
+    uv_update_time(p_this);
+    if(p_this->n_active_check_handlers > 0){
+        for(int i = 0; i < p_this->n_active_check_handlers; i++){
+            uv_create_task_check(p_this->active_check_handlers[i]);
+            p_this->n_check_handlers_run++;
+        }
+    }
+}
+
 // FSM init
 
 fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 {
 	static fsm_trans_t loopFSM_tt[] = {
-        { SIGNAL, check_all_sig_handlers_run, STREAM, run_signal_handling },
+        { CHECK, check_all_check_handlers_run, STREAM, run_signal_handling },
+        { CHECK, check_is_closing, IDLE, NULL},
+        { SIGNAL, check_all_sig_handlers_run, STREAM, run_stream_handling },
         { SIGNAL, check_is_closing, IDLE, NULL},
-        { STREAM, check_all_stream_handlers_run, SIGNAL , run_stream_handling},
+        { STREAM, check_all_stream_handlers_run, CHECK , run_check_handling},
         { STREAM, check_is_closing, IDLE, NULL},
 		{ -1, NULL, -1, NULL},
 	};
@@ -119,5 +144,10 @@ uv_create_task_signal (uv_signal_t* handle){
 
 void
 uv_create_task_stream (uv_stream_t* handle){
-    // this function should go through every cb, executing it if flags indicate it
+    // call the reactor
+}
+
+void
+uv_create_task_check (uv_check_t* handle){
+    handle->cb(handle);
 }

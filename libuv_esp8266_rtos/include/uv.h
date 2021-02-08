@@ -13,100 +13,108 @@
 #include "esp_timer.h"
 #include "esp_common.h"
 
-// Some global constants
+/// Some global constants
 
 #define SIGNAL_TASK_PRIORITY 4
 #define LOOP_RATE_MS 100
 
-// Declaration
+/// Declaration
 
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_tcp_s uv_tcp_t;
-typedef struct uv_stream_s uv_stream_t;
+typedef struct uv_timer_s uv_stream_t;
 typedef struct uv_buf_s uv_buf_t;
+typedef struct uv_check_s uv_check_t;
 
 typedef struct signal_cb_param_s signal_cb_param_t;
 
 typedef struct loopFSM_s loopFSM_t;
 
-// Callbacks declaration and definition
+/// Callbacks declaration and definition
 
+// For signal purposes
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
+
+// For timer purposes
 typedef void (*uv_timer_cb)(uv_timer_t* handle);
+
+// For stream/tcp purposes
 typedef void (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
 typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
 typedef void (*uv_connection_cb)(uv_stream_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
 
+// For check purposes
+typedef void (*uv_check_cb)(uv_check_t* handle);
 
-// Structs for parameters to create task
+
+/// Structs for parameters to create task
 
 struct signal_cb_param_s {
-  uv_signal_t* handle;
-  int signum;
+    uv_signal_t* handle;
+    int signum;
 };
 
 
-// Types definition
+/// Types definition
+
+struct uv_check_s {
+    uv_loop_t* loop;
+    uv_check_cb cb;
+};
 
 struct uv_tcp_s {
-  uv_loop_t* loop;
-  unsigned int flags;
-  uv_read_cb* read_cb;
-  uv_alloc_cb* alloc_cb;
-  uv_connection_cb* connection_cb;
-  uv_close_cb* close_cb;
-};
-
-struct uv_stream_s {
-  uv_loop_t* loop;
-  unsigned int flags;
-  uv_read_cb* read_cb;
-  uv_alloc_cb* alloc_cb;
-  uv_connection_cb* connection_cb;
-  uv_close_cb* close_cb;
+    uv_loop_t* loop;
+    unsigned int flags;
+    uv_read_cb read_cb;
+    uv_alloc_cb alloc_cb;
+    uv_connection_cb connection_cb;
+    uv_close_cb close_cb;
 };
 
 struct uv_buf_s {
-  char* base;
-  size_t len;
+    char* base;
+    size_t len;
 };
 
 struct uv_timer_s {
-  uv_loop_t* loop;
-  os_timer_t* timer;
-  uv_timer_cb timer_cb;
-  unsigned int timeout;
-  unsigned int repeat : 1;
+    uv_loop_t* loop;
+    os_timer_t* timer;
+    uv_timer_cb timer_cb;
+    unsigned int timeout;
+    unsigned int repeat : 1;
 };
 
 struct uv_signal_s {
-  uv_loop_t* loop;
-  uv_signal_cb signal_cb;
-  int signum; // indicates pin
+    uv_loop_t* loop;
+    uv_signal_cb signal_cb;
+    int signum; // indicates pin
 };
 
 struct uv_loop_s {
-  fsm_t* loopFSM;
+    fsm_t* loopFSM;
 };
 
 //Fsm needed data
 struct loopFSM_s
 {
-  uint32_t time;
+    uint32_t time;
 
-  unsigned int loop_is_closing : 1;
+    unsigned int loop_is_closing : 1;
 
-  uv_signal_t** active_signal_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
-  unsigned int n_active_signal_handlers; // number of signal handlers
-  unsigned int n_signal_handlers_run; // number of signal handlers that have been run
+    uv_signal_t** active_signal_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
+    unsigned int n_active_signal_handlers; // number of signal handlers
+    unsigned int n_signal_handlers_run; // number of signal handlers that have been run
 
-  uv_stream_t** active_stream_handlers;
-  unsigned int n_active_stream_handlers;
-  unsigned int n_stream_handlers_run;
+    uv_stream_t** active_stream_handlers;
+    unsigned int n_active_stream_handlers;
+    unsigned int n_stream_handlers_run;
 
+    uv_check_t** active_check_handlers;
+    unsigned int n_active_check_handlers;
+    unsigned int n_check_handlers_run;
 };
 
 // Some function prototypes
@@ -115,15 +123,21 @@ void uv_update_time (loopFSM_t* loop);
 
 // Timer function protypes
 
-int uv_timer_init(uv_loop_t* loop_s, uv_timer_t* handle);
+int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle);
 int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat);
 int uv_timer_stop(uv_timer_t* handle);
 
 // Signal function prototypes
 
-int uv_signal_init (uv_loop_t* loop, uv_signal_t* handle);
+int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
 int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum);
 int uv_signal_stop(uv_signal_t* handle);
+
+// Check function prototypes
+
+int uv_check_init(uv_loop_t* loop, uv_check_t* check);
+int uv_check_start(uv_check_t* check, uv_check_cb cb);
+int uv_check_close(uv_check_t* check);
 
 // Core function protypes
 

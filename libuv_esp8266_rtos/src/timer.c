@@ -1,8 +1,8 @@
 #include "uv.h"
 
 int
-uv_timer_init (uv_loop_t* loop_s, uv_timer_t* handle){
-    handle->loop = loop_s;
+uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
+    handle->loop = loop;
     return 0;
 }
 
@@ -10,15 +10,6 @@ int
 uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat){
     loopFSM_t* loop = handle->loop->loopFSM->user_data;
 
-    /*
-    if(uv__is_closing(handle)) || cb == NULL)
-        return UV_EINVAL;
-
-    // Check if same handle reference exists. If it does, stop the reference to reconfigure it (?)
-    if(uv__is_active(handle))
-        uv_timer_stop(handle);
-
-    */
     os_timer_t* new_timer;  
 
     handle->timer_cb = cb;
@@ -43,11 +34,8 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
 
 int
 uv_timer_stop(uv_timer_t* handle){
-    /*
-    if(!uv__is_active(handle))
-        return 0;
-    */
-
     // Delete timer (xTimerDelete())
     os_timer_disarm(handle->timer);
+
+    return 0;
 }
