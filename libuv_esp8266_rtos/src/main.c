@@ -8,16 +8,18 @@ To be verified
 
 // SIGNAL TEST
 
-#define INPUT_TEST_PORT 4
+#define INPUT_TEST_PORT_OFF 3
+#define INPUT_TEST_PORT_ON 4
 #define LED_TEST_PORT 5
 
 void
-test_callback (uv_signal_t* handle, int signum){
-    if(GPIO_INPUT_GET(signum) == 0){
-        GPIO_OUTPUT_SET(signum, 0);
-    } else {
-        GPIO_OUTPUT_SET(signum, 1);
-    }
+test_callback_on (uv_signal_t* handle, int signum){
+    GPIO_OUTPUT_SET(LED_TEST_PORT,1);
+}
+
+void
+test_callback_off (uv_signal_t* handle, int signum){
+    GPIO_OUTPUT_SET(LED_TEST_PORT,0);
 }
 
 void
@@ -25,7 +27,8 @@ main_signal(void* ignore){
 
     // Configure GPIO
     GPIO_AS_OUTPUT(LED_TEST_PORT);
-    GPIO_AS_INPUT(INPUT_TEST_PORT);
+    GPIO_AS_INPUT(INPUT_TEST_PORT_ON);
+    GPIO_AS_INPUT(INPUT_TEST_PORT_OFF);
 
     // Init loop
     uv_loop_t* loop;
@@ -37,14 +40,25 @@ main_signal(void* ignore){
     }
 
     // Init signal handle
-    uv_signal_t* signal_handle;
+    uv_signal_t* signal_handle_on;
+    uv_signal_t* signal_handle_off;
 
-    rv = uv_signal_init(loop, signal_handle);
+    rv = uv_signal_init(loop, signal_handle_on);
     if(rv != 0){
         // do something because error has been caused
     }
 
-    rv = uv_signal_start(signal_handle, test_callback, INPUT_TEST_PORT);
+    rv = uv_signal_start(signal_handle_on, test_callback_on, INPUT_TEST_PORT_ON);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    rv = uv_signal_init(loop, signal_handle_off);
+    if(rv != 0){
+        // do something because error has been caused
+    }
+
+    rv = uv_signal_start(signal_handle_off, test_callback_off, INPUT_TEST_PORT_OFF);
     if(rv != 0){
         // do something because error has been caused
     }
