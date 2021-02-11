@@ -5,7 +5,7 @@ enum states {
     IDLE,
     CHECK,
     SIGNAL,
-    STREAM,
+    STREAM
 };
 
 // Checking functions (static int that return either 1 or 0)
