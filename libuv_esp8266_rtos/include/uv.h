@@ -18,6 +18,14 @@
 #define SIGNAL_TASK_PRIORITY 4
 #define LOOP_RATE_MS 100
 
+/// Enumeration
+typedef enum{
+    TIMER,
+    SIGNAL,
+    TCP,
+    CHECK
+} handle_type;
+
 /// Declaration
 
 typedef struct uv_loop_s uv_loop_t;
@@ -27,7 +35,7 @@ typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_tcp_s uv_stream_t;
 typedef struct uv_buf_s uv_buf_t;
 typedef struct uv_check_s uv_check_t;
-typedef struct uv_tcp_s uv_handle_t;
+typedef struct uv_handle_s uv_handle_t;
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
 
@@ -36,6 +44,7 @@ typedef struct signal_cb_param_s signal_cb_param_t;
 typedef struct loopFSM_s loopFSM_t;
 
 /// Callbacks declaration and definition
+typedef void (*uv_handler)(uv_handle_t* handle);
 
 // For signal purposes
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
@@ -73,9 +82,21 @@ typedef uv_connect_s {
 
 };
 
+struct uv_handle_s {
+    union
+    {
+        uv_tcp_t* handle_tcp;
+        uv_signal_t* handle_signal;
+        uv_timer_t* handle_timer;
+        uv_check_t* handle_check;
+    };
+    handle_type type;
+};
+
 struct uv_check_s {
     uv_loop_t* loop;
     uv_check_cb cb;
+    uv_handle_t* self;
 };
 
 struct uv_tcp_s {
@@ -104,6 +125,8 @@ struct uv_signal_s {
     uv_loop_t* loop;
     uv_signal_cb signal_cb;
     int signum; // indicates pin
+    uv_handle_t* self;
+    unsigned int intr_bit : 1;
 };
 
 struct uv_loop_s {
@@ -117,17 +140,9 @@ struct loopFSM_s
 
     unsigned int loop_is_closing : 1;
 
-    uv_signal_t** active_signal_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
-    unsigned int n_active_signal_handlers; // number of signal handlers
-    unsigned int n_signal_handlers_run; // number of signal handlers that have been run
-
-    uv_stream_t** active_stream_handlers;
-    unsigned int n_active_stream_handlers;
-    unsigned int n_stream_handlers_run;
-
-    uv_check_t** active_check_handlers;
-    unsigned int n_active_check_handlers;
-    unsigned int n_check_handlers_run;
+    uv_handle_t** active_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
+    unsigned int n_active_handlers; // number of signal handlers
+    unsigned int n_handlers_run; // number of signal handlers that have been run
 };
 
 // Some function prototypes
@@ -151,10 +166,6 @@ int uv_signal_stop(uv_signal_t* handle);
 int uv_check_init(uv_loop_t* loop, uv_check_t* check);
 int uv_check_start(uv_check_t* check, uv_check_cb cb);
 int uv_check_close(uv_check_t* check);
-
-// Core function protypes
-
-void uv_create_task_signal (uv_signal_t* handle);
 
 // Loop function prototypes
 

@@ -3,38 +3,16 @@
 // FSM states
 enum states {
     IDLE,
-    CHECK,
-    SIGNAL,
-    STREAM
+    RUN
 };
 
 // Checking functions (static int that return either 1 or 0)
 // Hace falta locks??
 static int
-check_all_sig_handlers_run (fsm_t* this){
+check_all_handlers_run (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
-    if(p_this->n_active_signal_handlers == p_this->n_signal_handlers_run){
-        p_this->n_signal_handlers_run = 0;
-        return 1;
-    }
-    return 0;
-}
-
-static int
-check_all_stream_handlers_run (fsm_t* this){
-    loopFSM_t* p_this = this->user_data;
-    if(p_this->n_active_stream_handlers == p_this->n_stream_handlers_run){
-        p_this->n_stream_handlers_run = 0;
-        return 1;
-    }
-    return 0;
-}
-
-static int
-check_all_check_handlers_run (fsm_t* this){
-    loopFSM_t* p_this = this->user_data;
-    if(p_this->n_active_check_handlers == p_this->n_check_handlers_run){
-        p_this->n_check_handlers_run = 0;
+    if(p_this->n_active_handlers == p_this->n_handlers_run){
+        p_this->n_handlers_run = 0;
         return 1;
     }
     return 0;
@@ -50,37 +28,13 @@ check_is_closing (fsm_t* this){
 
 // call every signal handler
 static void
-run_signal_handling (fsm_t* this){
+run_handlers (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
     uv_update_time(p_this);
-    if(p_this->n_active_signal_handlers > 0){
-        for(int i = 0; i < p_this->n_active_signal_handlers; i++){
-            uv_create_task_signal(p_this->active_signal_handlers[i]);
-            p_this->n_signal_handlers_run++;
-        }
-    }
-}
-
-static void
-run_stream_handling (fsm_t* this){
-    loopFSM_t* p_this = this->user_data;
-    uv_update_time(p_this);
-    if(p_this->n_active_stream_handlers > 0){
-        for(int i = 0; i < p_this->n_active_stream_handlers; i++){
-            uv_create_task_stream(p_this->active_stream_handlers[i]);
-            p_this->n_stream_handlers_run++;
-        }
-    }
-}
-
-static void
-run_check_handling (fsm_t* this){
-    loopFSM_t* p_this = this->user_data;
-    uv_update_time(p_this);
-    if(p_this->n_active_check_handlers > 0){
-        for(int i = 0; i < p_this->n_active_check_handlers; i++){
-            uv_create_task_check(p_this->active_check_handlers[i]);
-            p_this->n_check_handlers_run++;
+    if(p_this->n_active_handlers > 0){
+        for(int i = 0; i < p_this->n_active_handlers; i++){
+            main_handler(p_this->active_handlers[i]);
+            p_this->n_handlers_run++;
         }
     }
 }
@@ -90,12 +44,8 @@ run_check_handling (fsm_t* this){
 fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 {
 	static fsm_trans_t loopFSM_tt[] = {
-        { CHECK, check_all_check_handlers_run, STREAM, run_signal_handling },
-        { CHECK, check_is_closing, IDLE, NULL},
-        { SIGNAL, check_all_sig_handlers_run, STREAM, run_stream_handling },
-        { SIGNAL, check_is_closing, IDLE, NULL},
-        { STREAM, check_all_stream_handlers_run, CHECK , run_check_handling},
-        { STREAM, check_is_closing, IDLE, NULL},
+        { RUN, check_all_handlers_run, RUN, run_handlers },
+        { RUN, check_is_closing, IDLE, NULL},
 		{ -1, NULL, -1, NULL},
 	};
 
@@ -135,23 +85,28 @@ uv_update_time(loopFSM_t* loop){
     loop->time = system_get_time();
 }
 
-void
-uv_create_task_signal (uv_signal_t* handle){
-    // signal_cb_param_t parameters = { handle, handle->signum };
-    // xTaskCreate((void*)(handle->signal_cb), "signal", 2048, (void*) &parameters, SIGNAL_TASK_PRIORITY, NULL);
-    if(GPIO_INPUT_GET(handle->signum)){
-        handle->signal_cb(handle, handle->signum);
+uv_handler
+main_handler(uv_handle_t* handle){
+    handle_type type = handle->type;
+    
+    switch (type)
+    {
+    case SIGNAL:
+        uv_signal_t* signal = handle->handle_signal;
+        if(signal->intr_bit){
+            signal->signal_cb(signal, signal->signum);
+            signal->intr_bit = 0;
+        }
+        else{
+            signal->intr_bit = 0;
+        }
+        break;
+
+    case CHECK:
+        uv_check_t* check = handle->handle_check;
+        check->cb(check);
+    
+    default:
+        break;
     }
-}
-
-void
-uv_create_task_stream (uv_stream_t* handle){
-    // call the reactor
-    // some precaution is needed as raft frees up tcp without any additional procedure
-    // check if ptr is not null before doing whatever
-}
-
-void
-uv_create_task_check (uv_check_t* handle){
-    handle->cb(handle);
 }
