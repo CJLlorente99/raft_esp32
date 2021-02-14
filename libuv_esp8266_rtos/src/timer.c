@@ -62,8 +62,8 @@ uv_timer_stop(uv_timer_t* handle){
     // Add handlers, except from the one stopped
     int j = 0;
     for(int i = 0; i < loop->n_active_handlers; i++){
-        if(loop->active_handlers[i]->type == SIGNAL){
-            if(loop->active_handlers[i]->handle_signal != handle){
+        if(loop->active_handlers[i]->type == TIMER){
+            if(loop->active_handlers[i]->handle_timer != handle){
                 memcpy((uv_handle_t*)new_handlers[j++], loop->active_handlers[i], sizeof(uv_handle_t));
             }
         }

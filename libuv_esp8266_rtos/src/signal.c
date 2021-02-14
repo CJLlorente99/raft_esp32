@@ -35,7 +35,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
     // Init interrupt for given signum
 
     GPIO_AS_INPUT(signum);
-    gpio_pin_intr_state_set(signum, GPIO_PIN_INTR_HILEVEL);
+    gpio_pin_intr_state_set(signum, GPIO_PIN_INTR_POSEDGE);
     gpio_intr_handler_register(&signal_isr, loop); // maybe this should be called only once.
     // to see which gpio caused the interruption -> gpio_input_get (returns bitmask of GPIO input pins);
 

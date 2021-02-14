@@ -43,9 +43,6 @@ typedef struct signal_cb_param_s signal_cb_param_t;
 
 typedef struct loopFSM_s loopFSM_t;
 
-/// Callbacks declaration and definition
-typedef void (*uv_handler)(uv_handle_t* handle);
-
 // For signal purposes
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
 
@@ -58,7 +55,7 @@ typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
 typedef void (*uv_connection_cb)(uv_stream_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
-typedef void (*uv_connection_cb)(uv_connect_t* req, int status);
+typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 
 // For check purposes
 typedef void (*uv_check_cb)(uv_check_t* handle);
@@ -162,6 +159,8 @@ int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
 int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum);
 int uv_signal_stop(uv_signal_t* handle);
 
+void signal_isr(loopFSM_t* loop);
+
 // Check function prototypes
 
 int uv_check_init(uv_loop_t* loop, uv_check_t* check);
@@ -174,5 +173,9 @@ int uv_loop_init (uv_loop_t* loop);
 int uv_loop_close (uv_loop_t* loop);
 uint32_t uv_now(const uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
+
+void run_signal(uv_signal_t* signal);
+void run_timer(uv_timer_t* timer);
+void main_handler(uv_handle_t* handler);
 
 #endif /* UV_H */

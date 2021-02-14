@@ -8,9 +8,9 @@ To be verified
 
 // SIGNAL TEST
 
-#define INPUT_TEST_PORT_OFF 3
+#define INPUT_TEST_PORT_OFF 15
 #define INPUT_TEST_PORT_ON 4
-#define LED_TEST_PORT 5
+#define LED_TEST_PORT 13
 
 void
 test_callback_on (uv_signal_t* handle, int signum){
@@ -206,5 +206,5 @@ uint32_t user_rf_cal_sector_set(void)
 *******************************************************************************/
 void user_init(void)
 {
-    xTaskCreate(&main_timer, "startup", 2048, NULL, 1, NULL);
+    xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
 }
