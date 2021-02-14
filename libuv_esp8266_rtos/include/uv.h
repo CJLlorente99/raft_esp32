@@ -78,7 +78,7 @@ struct uv_write_s {
 
 };
 
-typedef uv_connect_s {
+struct uv_connect_s {
 
 };
 
@@ -101,7 +101,7 @@ struct uv_check_s {
 
 struct uv_tcp_s {
     uv_loop_t* loop;
-    unsigned int flags;
+    uint64 flags;
     uv_read_cb read_cb;
     uv_alloc_cb alloc_cb;
     uv_connection_cb connection_cb;
@@ -115,10 +115,10 @@ struct uv_buf_s {
 
 struct uv_timer_s {
     uv_loop_t* loop;
-    os_timer_t* timer;
     uv_timer_cb timer_cb;
-    unsigned int timeout;
-    unsigned int repeat : 1;
+    uint64 timeout;
+    uint64 repeat;
+    uv_handle_t* self;
 };
 
 struct uv_signal_s {
@@ -126,7 +126,7 @@ struct uv_signal_s {
     uv_signal_cb signal_cb;
     int signum; // indicates pin
     uv_handle_t* self;
-    unsigned int intr_bit : 1;
+    uint64 intr_bit : 1;
 };
 
 struct uv_loop_s {
@@ -136,13 +136,13 @@ struct uv_loop_s {
 //Fsm needed data
 struct loopFSM_s
 {
-    uint32_t time;
+    uint64 time;
 
-    unsigned int loop_is_closing : 1;
+    int loop_is_closing : 1;
 
     uv_handle_t** active_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
-    unsigned int n_active_handlers; // number of signal handlers
-    unsigned int n_handlers_run; // number of signal handlers that have been run
+    int n_active_handlers; // number of signal handlers
+    int n_handlers_run; // number of signal handlers that have been run
 };
 
 // Some function prototypes
@@ -154,6 +154,7 @@ void uv_update_time (loopFSM_t* loop);
 int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle);
 int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat);
 int uv_timer_stop(uv_timer_t* handle);
+int uv_timer_again(uv_timer_t* handle);
 
 // Signal function prototypes
 

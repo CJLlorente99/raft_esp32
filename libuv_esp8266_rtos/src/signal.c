@@ -85,6 +85,15 @@ void
 signal_isr(loopFSM_t* loop){
     uint32 bitmask = gpio_input_get();
 
-    // TODO
-    // buscar forma elegante de ver que pin ha causado la interrupcion y poner a uno intr_bit del handle correspondiente
+    for (int i = 0; i < loop->n_active_handlers; i++){
+        if(loop->active_handlers[i]->type == SIGNAL){
+            if ((bitmask >> loop->active_handlers[i]->handle_signal->signum) & 1){
+                loop->active_handlers[i]->handle_signal->intr_bit = 1;
+            }
+            // is this option also possible?
+            // loop->active_handlers[i]->handle_signal->intr_bit = ((bitmask >> loop->active_handlers[i]->handle_signal->signum) & 1);
+            
+        }
+    }
+    
 }

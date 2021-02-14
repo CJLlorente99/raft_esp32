@@ -33,6 +33,7 @@ run_handlers (fsm_t* this){
     uv_update_time(p_this);
     if(p_this->n_active_handlers > 0){
         for(int i = 0; i < p_this->n_active_handlers; i++){
+            uv_update_time(p_this);
             main_handler(p_this->active_handlers[i]);
             p_this->n_handlers_run++;
         }
@@ -84,7 +85,7 @@ uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is us
 
 void
 uv_update_time(loopFSM_t* loop){
-    loop->time = system_get_time();
+    loop->time = (uint64)system_get_time()/1000;
 }
 
 uv_handler
@@ -95,20 +96,43 @@ main_handler(uv_handle_t* handle){
     {
     case SIGNAL:
         uv_signal_t* signal = handle->handle_signal;
-        if(signal->intr_bit){
-            signal->signal_cb(signal, signal->signum);
-            signal->intr_bit = 0;
-        }
-        else{
-            signal->intr_bit = 0;
-        }
+        run_signal(signal);
         break;
 
     case CHECK:
         uv_check_t* check = handle->handle_check;
         check->cb(check);
+        break;
     
+    case TIMER:
+        uv_timer_t* timer = handle->handle_timer;
+        run_timer(timer);
+        break;
+
     default:
         break;
     }
+}
+
+void
+run_signal(uv_signal_t* signal){
+    if(signal->intr_bit){
+        signal->signal_cb(signal, signal->signum);
+        signal->intr_bit = 0;
+    }
+    else{
+        signal->intr_bit = 0;
+    }
+}
+
+void
+run_timer(uv_timer_t* timer){
+    loopFSM_t* loop = timer->loop->loopFSM->user_data;
+
+    if(timer->timeout > loop->time)
+        return 0;
+
+    uv_timer_stop(timer);
+    uv_timer_again(timer);
+    timer->timer_cb(timer);
 }
