@@ -64,6 +64,7 @@ int
 uv_loop_close (uv_loop_t* loop){
     loopFSM_t* this = loop->loopFSM->user_data; // es necesario poner esto?
     this->loop_is_closing = 1;
+    return 0;
 }
 
 uint32_t
@@ -78,6 +79,7 @@ uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is us
         vTaskDelay(LOOP_RATE_MS/portTICK_RATE_MS);
         fsm_fire(loop->loopFSM);
     }
+    return 1;
 }
 
 void
