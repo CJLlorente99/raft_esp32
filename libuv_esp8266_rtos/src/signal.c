@@ -3,24 +3,29 @@
 // EL UNICO USO QUE SE HACE DEL SIGNAL EN RAFT ES PARA CAPTAR SEÑALES DE INTERRUPCION
 // GENERADAS POR EL USER
 
+// virtual table for signal handlers
+static handle_vtbl_t signal_vtbl = {
+    .run = run_signal
+};
+
+
 int 
 uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){
-    handle->loop = loop;
-    handle->self->type = SIGNAL;
-    handle->self->handle_signal = handle;
+    handle->self->loop = loop;
+    handle->self->vtbl = &signal_vtbl;
     return 0;
 }
 
 int
 uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
-    loopFSM_t* loop = handle->loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
     // If handler array exists, do some check
     if(loop->active_handlers){
         // Check if handler with same signum
-        uv_handle_t** handlers = loop->active_handlers;
+        uv_signal_t** handlers = loop->active_handlers;
         for(int i = 0; i < loop->n_active_handlers; i++){
-            if(handlers[i]->type == SIGNAL){
-                if(handlers[i]->handle_signal->signum == signum){
+            if(handlers[i]->signum){ // cuidado aqui, puede haber problemas?
+                if(handlers[i]->signum == signum){
                     handle->signal_cb = signal_cb;
                     return 0;
                 }
@@ -59,7 +64,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 
 int
 uv_signal_stop(uv_signal_t* handle){
-    loopFSM_t* loop = handle->loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
 
     // Allocate memory for new array of handlers
     int new_n_active_handlers = loop->n_active_handlers--;
@@ -68,7 +73,7 @@ uv_signal_stop(uv_signal_t* handle){
     // Add handlers, except from the one stopped
     int j = 0;
     for(int i = 0; i < loop->n_active_handlers; i++){
-        if(loop->active_handlers[i]->type == SIGNAL){
+        if(loop->active_handlers[i]->signum){
             if(loop->active_handlers[i]->handle_signal != handle){
                 memcpy((uv_handle_t*)new_handlers[j++], loop->active_handlers[i], sizeof(uv_handle_t));
             }
@@ -86,7 +91,7 @@ signal_isr(loopFSM_t* loop){
     uint32 bitmask = gpio_input_get();
 
     for (int i = 0; i < loop->n_active_handlers; i++){
-        if(loop->active_handlers[i]->type == SIGNAL){
+        if(loop->active_handlers[i]->){
             if ((bitmask >> loop->active_handlers[i]->handle_signal->signum) & 1){
                 loop->active_handlers[i]->handle_signal->intr_bit = 1;
             }
@@ -96,4 +101,16 @@ signal_isr(loopFSM_t* loop){
         }
     }
     
+}
+
+// run implementation for signals
+void
+run_signal(uv_signal_t* signal){
+    if(signal->intr_bit){
+        signal->signal_cb(signal, signal->signum);
+        signal->intr_bit = 0;
+    }
+    else{
+        signal->intr_bit = 0;
+    }
 }

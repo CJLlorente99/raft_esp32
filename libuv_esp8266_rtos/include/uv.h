@@ -18,13 +18,22 @@
 #define SIGNAL_TASK_PRIORITY 4
 #define LOOP_RATE_MS 100
 
-/// Enumeration
-typedef enum{
-    TIMER,
-    SIGNAL,
-    TCP,
-    CHECK
-} handle_type;
+// virtual table for every handle
+struct handle_vtbl_s {
+    void (*run)(uv_handle_t* handle);
+};
+
+typedef struct handle_vtbl_s handle_vtbl_t;
+
+
+// handle "class"
+struct uv_handle_s {
+    struct handle_vtbl_t *vtbl;
+    uv_loop_t* loop;
+};
+
+// polymorphic method
+void handle_run(uv_handle_t* handle);
 
 /// Declaration
 
@@ -82,17 +91,6 @@ struct uv_connect_s {
 
 };
 
-struct uv_handle_s {
-    union
-    {
-        uv_tcp_t* handle_tcp;
-        uv_signal_t* handle_signal;
-        uv_timer_t* handle_timer;
-        uv_check_t* handle_check;
-    };
-    handle_type type;
-};
-
 struct uv_check_s {
     uv_loop_t* loop;
     uv_check_cb cb;
@@ -122,10 +120,9 @@ struct uv_timer_s {
 };
 
 struct uv_signal_s {
-    uv_loop_t* loop;
+    uv_handle_t* self;
     uv_signal_cb signal_cb;
     int signum; // indicates pin
-    uv_handle_t* self;
     uint64 intr_bit : 1;
 };
 
