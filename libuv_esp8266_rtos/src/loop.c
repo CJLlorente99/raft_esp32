@@ -50,7 +50,7 @@ fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 		{ -1, NULL, -1, NULL},
 	};
 
-	return fsm_new (SIGNAL, loopFSM_tt, loop);
+	return fsm_new (RUN, loopFSM_tt, loop);
 }
 
 int
@@ -91,44 +91,4 @@ uv_update_time(loopFSM_t* loop){
 void
 handle_run(uv_handle_t* handle){
     handle->vtbl->run(handle);
-}
-
-uv_handler
-main_handler(uv_handle_t* handle){
-    handle_type type = handle->type;
-    
-    switch (type)
-    {
-    case SIGNAL:
-        uv_signal_t* signal = handle->handle_signal;
-        run_signal(signal);
-        break;
-
-    case CHECK:
-        uv_check_t* check = handle->handle_check;
-        check->cb(check);
-        break;
-    
-    case TIMER:
-        uv_timer_t* timer = handle->handle_timer;
-        run_timer(timer);
-        break;
-
-    default:
-        break;
-    }
-}
-
-
-
-void
-run_timer(uv_timer_t* timer){
-    loopFSM_t* loop = timer->loop->loopFSM->user_data;
-
-    if(timer->timeout > loop->time)
-        return 0;
-
-    uv_timer_stop(timer);
-    uv_timer_again(timer);
-    timer->timer_cb(timer);
 }

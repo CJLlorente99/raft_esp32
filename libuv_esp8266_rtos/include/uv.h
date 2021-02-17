@@ -18,24 +18,9 @@
 #define SIGNAL_TASK_PRIORITY 4
 #define LOOP_RATE_MS 100
 
-// virtual table for every handle
-struct handle_vtbl_s {
-    void (*run)(uv_handle_t* handle);
-};
+/// Declaration
 
 typedef struct handle_vtbl_s handle_vtbl_t;
-
-
-// handle "class"
-struct uv_handle_s {
-    struct handle_vtbl_t *vtbl;
-    uv_loop_t* loop;
-};
-
-// polymorphic method
-void handle_run(uv_handle_t* handle);
-
-/// Declaration
 
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
@@ -72,14 +57,19 @@ typedef void (*uv_connection_cb)(uv_connect_t* req, int status);
 // For check purposes
 typedef void (*uv_check_cb)(uv_check_t* handle);
 
-
-/// Structs for parameters to create task
-
-struct signal_cb_param_s {
-    uv_signal_t* handle;
-    int signum;
+// handle "class"
+struct uv_handle_s {
+    handle_vtbl_t *vtbl;
+    uv_loop_t* loop;
 };
 
+// virtual table for every handle
+struct handle_vtbl_s {
+    void (*run)(uv_handle_t* handle);
+};
+
+// polymorphic method
+void handle_run(uv_handle_t* handle);
 
 /// Types definition
 
@@ -92,7 +82,6 @@ struct uv_connect_s {
 };
 
 struct uv_check_s {
-    uv_loop_t* loop;
     uv_check_cb cb;
     uv_handle_t* self;
 };
@@ -112,7 +101,6 @@ struct uv_buf_s {
 };
 
 struct uv_timer_s {
-    uv_loop_t* loop;
     uv_timer_cb timer_cb;
     uint64 timeout;
     uint64 repeat;
