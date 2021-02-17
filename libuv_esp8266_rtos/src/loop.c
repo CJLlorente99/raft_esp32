@@ -74,6 +74,7 @@ uv_now(const uv_loop_t* loop){
     return this->time;
 }
 
+// TODO, MEJOR CREAR UN TIMER QUE LLAME A fsm_fire periodicamente?
 int
 uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is used in raft
     while(true){

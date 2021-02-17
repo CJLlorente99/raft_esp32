@@ -206,5 +206,6 @@ uint32_t user_rf_cal_sector_set(void)
 *******************************************************************************/
 void user_init(void)
 {
+    espconn_init();
     xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
 }

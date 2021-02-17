@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 #include "esp_common.h"
+#include "espconn.h"
 
 /// Some global constants
 
@@ -103,6 +104,8 @@ struct uv_tcp_s {
     uv_alloc_cb alloc_cb;
     uv_connection_cb connection_cb;
     uv_close_cb close_cb;
+    uv_handle_t* self;
+    struct espconn* espconn_s;
 };
 
 struct uv_buf_s {
@@ -177,5 +180,12 @@ int uv_run (uv_loop_t* loop);
 void run_signal(uv_signal_t* signal);
 void run_timer(uv_timer_t* timer);
 void main_handler(uv_handle_t* handler);
+
+// sockaddr
+
+typedef struct sockaddr{
+    unsigned short sa_family;
+    char sa_data[14];
+}sockaddr;
 
 #endif /* UV_H */
