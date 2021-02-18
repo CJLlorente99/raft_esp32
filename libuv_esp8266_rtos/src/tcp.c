@@ -51,7 +51,7 @@ uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
     // finally binds the socket to the IPv4 address
 
     // PROBLEMS -> sockaddr exists in esp8266 rtos?
-    handle->espconn_s->proto.tcp->local_ip = addr->sa_data;
+    // handle->espconn_s->proto.tcp->local_ip = addr->sa_data;
 
     int rv;
 
@@ -71,7 +71,7 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     
     int rv;
 
-    rv = handle->espconn_s->proto.tcp->remote_ip = addr->sa_data;
+    // rv = handle->espconn_s->proto.tcp->remote_ip = addr->sa_data;
     if(rv != 0){
         // do something because error might have ocurred
     }

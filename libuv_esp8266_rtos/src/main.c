@@ -11,6 +11,7 @@ To be verified
 #define INPUT_TEST_PORT_OFF 15
 #define INPUT_TEST_PORT_ON 4
 #define LED_TEST_PORT 13
+#define LED_DEBUG_PORT 3
 
 void
 test_callback_on (uv_signal_t* handle, int signum){
