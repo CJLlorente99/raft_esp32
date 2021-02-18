@@ -77,9 +77,11 @@ uv_now(const uv_loop_t* loop){
 // TODO, MEJOR CREAR UN TIMER QUE LLAME A fsm_fire periodicamente?
 int
 uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is used in raft
+    portTickType xLastTime = xTaskGetTickCount();
+    const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
     while(true){
-        vTaskDelay(LOOP_RATE_MS/portTICK_RATE_MS);
         fsm_fire(loop->loopFSM);
+        vTaskDelayUntil(&xLastTime, xFrequency);
     }
     return 1;
 }
