@@ -34,8 +34,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
     gpio_pin_intr_state_set(signum, GPIO_PIN_INTR_HILEVEL);
     gpio_intr_handler_register(&signal_isr, loop); // maybe this should be called only once.
 
-    // TODO
-    // añadir a los handlers a los que se tiene que llamar desde el loop
+    insert_handle(loop, (uv_handle_t*)handle);
 
     return 0;
 
@@ -45,7 +44,7 @@ int
 uv_signal_stop(uv_signal_t* handle){
     loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
 
-    // quitar handler de los que son llamados desde el loop
+    remove_handle(loop, (uv_handle_t*)handle);
 
     return 0;
 }
@@ -54,6 +53,7 @@ void
 signal_isr(loopFSM_t* loop){
     uint32 bitmask = gpio_input_get();
 
+    // TODO
     // comprobar cual es el handler que ha sido activado y activar el intr_bit
     
 }

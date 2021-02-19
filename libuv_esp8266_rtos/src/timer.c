@@ -36,8 +36,7 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
     handle->timeout = clamped_timeout;
     handle->repeat = repeat;
 
-    // TODO
-    // añadir a los handlers a los que se tiene que llamar desde el loop
+    insert_handle(loop, (uv_handle_t*)handle);
 
     // TODO
     // libuv original hace algo que no termino de entender bien (diria que es para ordenar los timers)
@@ -49,7 +48,8 @@ int
 uv_timer_stop(uv_timer_t* handle){
     loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
 
-    // quitar handler de los que son llamados desde el loop
+    remove_handle(loop, (uv_handle_t*)handle);
+    
     return 0;
 }
 

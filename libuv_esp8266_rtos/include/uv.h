@@ -82,11 +82,12 @@ struct uv_connect_s {
 };
 
 struct uv_check_s {
-    uv_check_cb cb;
     uv_handle_t* self;
+    uv_check_cb cb;
 };
 
 struct uv_tcp_s {
+    uv_handle_t* self;
     uv_loop_t* loop;
     uint64 flags;
     uv_read_cb read_cb;
@@ -101,10 +102,10 @@ struct uv_buf_s {
 };
 
 struct uv_timer_s {
+    uv_handle_t* self;
     uv_timer_cb timer_cb;
     uint64 timeout;
     uint64 repeat;
-    uv_handle_t* self;
 };
 
 struct uv_signal_s {
@@ -150,8 +151,8 @@ int uv_signal_stop(uv_signal_t* handle);
 // Check function prototypes
 
 int uv_check_init(uv_loop_t* loop, uv_check_t* check);
-int uv_check_start(uv_check_t* check, uv_check_cb cb);
-int uv_check_close(uv_check_t* check);
+int uv_check_start(uv_check_t* handle, uv_check_cb cb);
+int uv_check_close(uv_check_t* handle);
 
 // Loop function prototypes
 
@@ -159,5 +160,9 @@ int uv_loop_init (uv_loop_t* loop);
 int uv_loop_close (uv_loop_t* loop);
 uint32_t uv_now(const uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
+
+// Core function prototypes
+int remove_handle(loopFSM_t* loop, uv_handle_t* handle);
+int insert_handle(loopFSM_t* loop, uv_handle_t* handle);
 
 #endif /* UV_H */

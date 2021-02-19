@@ -13,28 +13,31 @@ uv_check_init(uv_loop_t* loop, uv_check_t* check){
 }
 
 int
-uv_check_start(uv_check_t* check, uv_check_cb cb){
-    loopFSM_t* loop = check->self->loop->loopFSM->user_data;
+uv_check_start(uv_check_t* handle, uv_check_cb cb){
+    loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
 
-    // TODO
-    // comprobar si este handler ya esta presente en los que tienen que ser llamados. Si es asi, cambiar el cb
+    // Check if handle is already present, if it is, just change cb
+    for(int i = 0; i < loop->n_active_handlers; i++){
+        if(loop->active_handlers[i] == (uv_handle_t*)handle){
+            handle->cb = cb;
+            return 0;
+        }
+    }
 
     // If not, add it to active handlers
+    handle->cb = cb;
 
-    check->cb = cb;
-
-    // TODO
-    // añadir a los handlers a los que se tiene que llamar desde el loop
+    insert_handle(loop, (uv_handle_t*)handle);
 
     return 0;   
 
 }
 
 int
-uv_check_stop(uv_check_t* check){
-    loopFSM_t* loop = check->self->loop->loopFSM->user_data;
+uv_check_stop(uv_check_t* handle){
+    loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
 
-    // quitar handler de los que son llamados desde el loop
+    remove_handle(loop, (uv_handle_t*)handle);
 }
 
 // run implementation for signals
