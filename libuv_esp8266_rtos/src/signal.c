@@ -55,6 +55,16 @@ signal_isr(loopFSM_t* loop){
 
     // TODO
     // comprobar cual es el handler que ha sido activado y activar el intr_bit
+    for (int i = 0; i < loop->n_active_handlers; i++){
+        uv_signal_t* signal = (uv_signal_t*)loop->active_handlers[i];
+        if(signal->signum){ // what i am trying to do with this is check if reference actually exists (it is a uv_signal_t indeed)
+            if ((bitmask >> signal->signum) & 1){
+                signal->intr_bit = 1;
+            }
+            // is this option also possible?
+            // loop->active_handlers[i]->handle_signal->intr_bit = ((bitmask >> loop->active_handlers[i]->handle_signal->signum) & 1);
+        }
+    }
     
 }
 
