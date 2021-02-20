@@ -25,6 +25,9 @@ test_callback_off (uv_signal_t* handle, int signum){
 
 void
 main_signal(void* ignore){
+    // Test led to be illuminated if execution begins
+    GPIO_AS_OUTPUT(LED_DEBUG_PORT);
+    GPIO_OUTPUT_SET(LED_DEBUG_PORT, 1);
 
     // Configure GPIO
     GPIO_AS_OUTPUT(LED_TEST_PORT);

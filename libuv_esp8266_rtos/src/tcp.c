@@ -20,20 +20,23 @@
         write -> escribir
 */
 
+void run_tcp(uv_handle_t* handle);
+
+// virtual table for tcp handlers
+static handle_vtbl_t tcp_vtbl = {
+    .run = run_tcp
+};
+
 int
 uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     // no hace falta crear una funcion como tal ya que uv__stream_init solo se usa aqui
-    tcp->loop = loop_s;
-    tcp->self->handle_tcp = tcp;
-    tcp->self->type = TCP;
+    tcp->self->loop = loop_s;
+    tcp->self->vtbl = &tcp_vtbl;
 
     loopFSM_t* loop = loop_s->loopFSM->user_data;
 
-    esp_tcp esp_tcp_s;
-    struct espconn* espconn_s;
-    espconn_s->proto.tcp = &esp_tcp_s;
-    
-    tcp->espconn_s = espconn_s;
+    esp_tcp* esp_tcp_s = malloc(sizeof(esp_tcp));
+    tcp->espconn_s->proto.tcp = esp_tcp_s;
 
     tcp->alloc_cb = NULL;
     tcp->close_cb = NULL;
@@ -72,7 +75,7 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     // once connection is completed callback is triggered (added to the correspondant state in loop FSM to be executed once)
     // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
     
-    int rv;
+    int rv = 0;
 
     // rv = handle->espconn_s->proto.tcp->remote_ip = addr->sa_data;
     if(rv != 0){
@@ -81,4 +84,11 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
 
     int status = 0;
     cb(req, status);
+}
+
+// run implementation for tcps
+void
+run_tcp(uv_handle_t* handle){
+    // TODO
+    // reactor
 }

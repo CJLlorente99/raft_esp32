@@ -3,11 +3,12 @@
 // EL UNICO USO QUE SE HACE DEL SIGNAL EN RAFT ES PARA CAPTAR SEÑALES DE INTERRUPCION
 // GENERADAS POR EL USER
 
+void run_signal(uv_handle_t* handle);
+
 // virtual table for signal handlers
 static handle_vtbl_t signal_vtbl = {
     .run = run_signal
 };
-
 
 int 
 uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){

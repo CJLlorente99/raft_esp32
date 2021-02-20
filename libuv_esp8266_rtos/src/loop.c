@@ -55,7 +55,7 @@ fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 
 int
 uv_loop_init (uv_loop_t* loop){
-    loopFSM_t* newLoopFSM;
+    loopFSM_t* newLoopFSM = malloc(sizeof(loopFSM_t));
     memset(loop,0,sizeof(uv_loop_t));
     loop->loopFSM = fsm_new_loopFSM (newLoopFSM);
     return 0;

@@ -5,6 +5,8 @@
 // Repeat -> cada cuanto se debe repetir el timer (0 == one-shot)
 // timeout -> tiempo para el proximo cb call
 
+void run_timer(uv_handle_t* handle);
+
 // virtual table for check handlers
 static handle_vtbl_t timer_vtbl = {
     .run = run_timer
@@ -70,7 +72,7 @@ run_timer(uv_handle_t* handle){
     loopFSM_t* loop = timer->self->loop->loopFSM->user_data;
 
     if(timer->timeout > loop->time)
-        return 0;
+        return;
 
     uv_timer_stop(timer);
     uv_timer_again(timer);

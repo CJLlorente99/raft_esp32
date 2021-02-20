@@ -1,5 +1,7 @@
 #include "uv.h"
 
+void run_check(uv_handle_t* handle);
+
 // virtual table for check handlers
 static handle_vtbl_t check_vtbl = {
     .run = run_check

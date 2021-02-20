@@ -92,7 +92,6 @@ struct uv_tcp_s {
     uv_alloc_cb alloc_cb;
     uv_connection_cb connection_cb;
     uv_close_cb close_cb;
-    uv_handle_t* self;
     struct espconn* espconn_s;
 };
 
