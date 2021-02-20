@@ -10,9 +10,9 @@
 #include "gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_timer.h"
 #include "esp_common.h"
 #include "espconn.h"
+#include "lwip/sockets.h"
 
 /// Some global constants
 
@@ -33,6 +33,10 @@ typedef struct uv_check_s uv_check_t;
 typedef struct uv_handle_s uv_handle_t;
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
+typedef struct uv_poll_s uv_poll_t;
+typedef struct uv_fs_s uv_fs_t;
+typedef struct uv_file_s uv_file;
+
 
 typedef struct signal_cb_param_s signal_cb_param_t;
 
@@ -55,6 +59,12 @@ typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 // For check purposes
 typedef void (*uv_check_cb)(uv_check_t* handle);
 
+// For poll purposes
+typedef void (*uv_poll_cb)(uv_poll_t* handle, int status, int events);
+
+// For fs puposes
+typedef void (*uv_fs_cb)(uv_fs_t* req);
+
 // handle "class"
 struct uv_handle_s {
     handle_vtbl_t *vtbl;
@@ -72,12 +82,28 @@ void handle_run(uv_handle_t* handle);
 /// Types definition
 
 struct uv_write_s {
-
+    // request
 };
 
 struct uv_connect_s {
-
+    // request
 };
+
+struct uv_fs_s {
+    // request
+};
+
+struct uv_file_s {
+    // representation of a file
+};
+
+
+
+struct uv_poll_s {
+    uv_handle_t* self;
+    uv_poll_cb cb;
+};
+
 
 struct uv_check_s {
     uv_handle_t* self;
@@ -92,6 +118,8 @@ struct uv_tcp_s {
     uv_alloc_cb alloc_cb;
     uv_connection_cb connection_cb;
     uv_close_cb close_cb;
+    uv_connect_cb connect_cb;
+    uv_write_cb write_cb;
     struct espconn* espconn_s;
 };
 
@@ -162,12 +190,13 @@ int uv_loop_close (uv_loop_t* loop);
 uint32_t uv_now(const uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
 
-// sockaddr
+// sockaddr and sockaddr_in
 
-typedef struct sockaddr{
-    unsigned short sa_family;
-    char sa_data[14];
-}sockaddr;
+typedef struct in_addr{
+    unsigned long s_addr;
+};
+
+
 // Core function prototypes
 int remove_handle(loopFSM_t* loop, uv_handle_t* handle);
 int insert_handle(loopFSM_t* loop, uv_handle_t* handle);

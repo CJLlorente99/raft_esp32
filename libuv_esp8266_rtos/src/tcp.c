@@ -20,6 +20,9 @@
         write -> escribir
 */
 
+// Even though espconn has various function to attach cb to some events, this would imply asyncronous beahviour.
+// Therefore cb calls will be managed differently
+
 void run_tcp(uv_handle_t* handle);
 
 // virtual table for tcp handlers
@@ -43,8 +46,8 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     tcp->connection_cb = NULL;
     tcp->read_cb = NULL;
 
-    // TODO
     // añadir a los handlers a los que se tiene que llamar desde el loop
+    insert_handle(loop, (uv_handle_t*)tcp);
 }
 
 int
@@ -57,11 +60,13 @@ uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
     // finally binds the socket to the IPv4 address
 
     // PROBLEMS -> sockaddr exists in esp8266 rtos?
-    // handle->espconn_s->proto.tcp->local_ip = addr->sa_data;
+    
+    // TODO
+    // take address from struct sockaddr
+    // Understanding how espconn works, this function should only safe the information given in the arguments
 
-    int rv;
+    int rv = 0;
 
-    rv = espconn_accept(handle->espconn_s);
     if(rv != 0){
         // do something because error might have ocurred
     }
@@ -75,6 +80,12 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     // once connection is completed callback is triggered (added to the correspondant state in loop FSM to be executed once)
     // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
     
+    // Use espconn_connect
+    // it is recommended to use espconn_port to get an available local port
+    // espconn_recv_hold?
+
+    handle->connect_cb = cb;
+
     int rv = 0;
 
     // rv = handle->espconn_s->proto.tcp->remote_ip = addr->sa_data;
