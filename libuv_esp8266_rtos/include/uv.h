@@ -163,21 +163,14 @@ int uv_loop_close (uv_loop_t* loop);
 uint32_t uv_now(const uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
 
-<<<<<<< HEAD
-void run_signal(uv_signal_t* signal);
-void run_timer(uv_timer_t* timer);
-void main_handler(uv_handle_t* handler);
-
 // sockaddr
 
 typedef struct sockaddr{
     unsigned short sa_family;
     char sa_data[14];
 }sockaddr;
-=======
 // Core function prototypes
 int remove_handle(loopFSM_t* loop, uv_handle_t* handle);
 int insert_handle(loopFSM_t* loop, uv_handle_t* handle);
->>>>>>> develop_oo-handles
 
 #endif /* UV_H */

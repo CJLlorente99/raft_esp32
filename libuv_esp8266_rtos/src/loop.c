@@ -91,55 +91,7 @@ uv_update_time(loopFSM_t* loop){
     loop->time = (uint64)system_get_time()/1000;
 }
 
-<<<<<<< HEAD
-void
-main_handler(uv_handle_t* handle){
-    handle_type type = handle->type;
-    
-    switch (type){
-    case SIGNAL: {
-        uv_signal_t* signal = handle->handle_signal;
-        run_signal(signal);
-        break; }
-
-    case CHECK: {
-        uv_check_t* check = handle->handle_check;
-        check->cb(check);
-        break; }
-    
-    case TIMER: {
-        uv_timer_t* timer = handle->handle_timer;
-        run_timer(timer);
-        break; }
-
-    default:
-        break;
-    }
-}
-
-void
-run_signal(uv_signal_t* signal){
-    if(signal->intr_bit){
-        signal->signal_cb(signal, signal->signum);
-        signal->intr_bit = 0;
-    }
-    else{
-        signal->intr_bit = 0;
-    }
-}
-
-void
-run_timer(uv_timer_t* timer){
-    loopFSM_t* loop = timer->loop->loopFSM->user_data;
-
-    if(timer->timeout >= loop->time){
-        uv_timer_stop(timer);
-        uv_timer_again(timer);
-        timer->timer_cb(timer);
-    }
-=======
 void
 handle_run(uv_handle_t* handle){
     handle->vtbl->run(handle);
->>>>>>> develop_oo-handles
 }

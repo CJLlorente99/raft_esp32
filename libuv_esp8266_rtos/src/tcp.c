@@ -39,12 +39,9 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     tcp->close_cb = NULL;
     tcp->connection_cb = NULL;
     tcp->read_cb = NULL;
-<<<<<<< HEAD
-=======
 
     // TODO
     // añadir a los handlers a los que se tiene que llamar desde el loop
->>>>>>> develop_oo-handles
 }
 
 int

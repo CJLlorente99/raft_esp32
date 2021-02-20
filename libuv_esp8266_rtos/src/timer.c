@@ -46,25 +46,7 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
 
 int
 uv_timer_stop(uv_timer_t* handle){
-<<<<<<< HEAD
-    loopFSM_t* loop = handle->loop->loopFSM->user_data;
-
-    // Allocate memory for new array of handlers
-    int new_n_active_handlers = loop->n_active_handlers--;
-    uv_handle_t** new_handlers = malloc(sizeof(uv_handle_t[new_n_active_handlers]));
-
-    // Add handlers, except from the one stopped
-    int j = 0;
-    for(int i = 0; i < loop->n_active_handlers; i++){
-        if(loop->active_handlers[i]->type == TIMER){
-            if(loop->active_handlers[i]->handle_timer != handle){
-                memcpy((uv_handle_t*)new_handlers[j++], loop->active_handlers[i], sizeof(uv_handle_t));
-            }
-        }
-    }
-=======
     loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
->>>>>>> develop_oo-handles
 
     remove_handle(loop, (uv_handle_t*)handle);
     
