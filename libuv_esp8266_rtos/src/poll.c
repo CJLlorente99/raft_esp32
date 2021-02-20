@@ -2,7 +2,7 @@
 
 void run_poll(uv_handle_t* handle);
 
-static handle_vtbl_t poll_vtbl{
+static handle_vtbl_t poll_vtbl = {
     .run = run_poll
 };
 

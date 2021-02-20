@@ -36,6 +36,8 @@ typedef struct uv_connect_s uv_connect_t;
 typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_file_s uv_file;
+typedef struct uv_dirent_s uv_dirent_t;
+
 
 
 typedef struct signal_cb_param_s signal_cb_param_t;
@@ -97,7 +99,9 @@ struct uv_file_s {
     // representation of a file
 };
 
+struct uv_dirent_s {
 
+};
 
 struct uv_poll_s {
     uv_handle_t* self;
@@ -189,13 +193,6 @@ int uv_loop_init (uv_loop_t* loop);
 int uv_loop_close (uv_loop_t* loop);
 uint32_t uv_now(const uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
-
-// sockaddr and sockaddr_in
-
-typedef struct in_addr{
-    unsigned long s_addr;
-};
-
 
 // Core function prototypes
 int remove_handle(loopFSM_t* loop, uv_handle_t* handle);

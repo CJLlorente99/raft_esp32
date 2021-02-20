@@ -105,7 +105,10 @@ half_sec_callback (uv_timer_t* handle){
 
 void
 main_timer(void* ignore){
-
+    // Test led to be illuminated if execution begins
+    GPIO_AS_OUTPUT(LED_DEBUG_PORT);
+    GPIO_OUTPUT_SET(LED_DEBUG_PORT, 1);
+    
     // Configure GPIO
     GPIO_AS_OUTPUT(LED_HALF_SEC_PORT);
     GPIO_AS_OUTPUT(LED_ONE_SHOT_PORT);
@@ -211,5 +214,5 @@ uint32_t user_rf_cal_sector_set(void)
 void user_init(void)
 {
     espconn_init();
-    xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
+    xTaskCreate(&main_timer, "startup", 2048, NULL, 1, NULL);
 }
