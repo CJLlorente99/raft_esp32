@@ -32,7 +32,7 @@ main_signal(void* ignore){
     GPIO_AS_INPUT(INPUT_TEST_PORT_OFF);
 
     // Init loop
-    uv_loop_t* loop;
+    uv_loop_t* loop = malloc(sizeof(uv_loop_t));
     int rv;
 
     rv = uv_loop_init(loop);
@@ -41,8 +41,8 @@ main_signal(void* ignore){
     }
 
     // Init signal handle
-    uv_signal_t* signal_handle_on;
-    uv_signal_t* signal_handle_off;
+    uv_signal_t* signal_handle_on = malloc(sizeof(uv_signal_t));
+    uv_signal_t* signal_handle_off = malloc(sizeof(uv_signal_t));
 
     rv = uv_signal_init(loop, signal_handle_on);
     if(rv != 0){
@@ -110,7 +110,7 @@ main_timer(void* ignore){
     GPIO_AS_INPUT(ONE_SHOT_CLOCK_TRIGGER_PORT);
 
     // Init loop
-    uv_loop_t* loop;
+    uv_loop_t* loop = malloc(sizeof(uv_loop_t));
     int rv;
 
     rv = uv_loop_init(loop);
@@ -119,9 +119,9 @@ main_timer(void* ignore){
     }
 
     // Init timers
-    uv_timer_t* timer_two_sec;
-    uv_timer_t* timer_half_sec;
-    uv_timer_t* timer_one_shot;
+    uv_timer_t* timer_two_sec = malloc(sizeof(uv_timer_t));
+    uv_timer_t* timer_half_sec = malloc(sizeof(uv_timer_t));
+    uv_timer_t* timer_one_shot = malloc(sizeof(uv_timer_t));
 
     rv = uv_timer_init(loop, timer_two_sec);
     if(rv != 0){

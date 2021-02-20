@@ -34,7 +34,7 @@ run_handlers (fsm_t* this){
     if(p_this->n_active_handlers > 0){
         for(int i = 0; i < p_this->n_active_handlers; i++){
             uv_update_time(p_this);
-            main_handler(p_this->active_handlers[i]);
+            handle_run(p_this->active_handlers[i]);
             p_this->n_handlers_run++;
         }
     }
@@ -50,7 +50,7 @@ fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 		{ -1, NULL, -1, NULL},
 	};
 
-	return fsm_new (SIGNAL, loopFSM_tt, loop);
+	return fsm_new (RUN, loopFSM_tt, loop);
 }
 
 int
@@ -91,6 +91,7 @@ uv_update_time(loopFSM_t* loop){
     loop->time = (uint64)system_get_time()/1000;
 }
 
+<<<<<<< HEAD
 void
 main_handler(uv_handle_t* handle){
     handle_type type = handle->type;
@@ -136,4 +137,9 @@ run_timer(uv_timer_t* timer){
         uv_timer_again(timer);
         timer->timer_cb(timer);
     }
+=======
+void
+handle_run(uv_handle_t* handle){
+    handle->vtbl->run(handle);
+>>>>>>> develop_oo-handles
 }

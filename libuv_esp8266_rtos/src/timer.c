@@ -1,14 +1,19 @@
 #include "uv.h"
 
+
 // Funcionamiento de los timers
 // Repeat -> cada cuanto se debe repetir el timer (0 == one-shot)
 // timeout -> tiempo para el proximo cb call
 
+// virtual table for check handlers
+static handle_vtbl_t timer_vtbl = {
+    .run = run_timer
+};
+
 int
 uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
-    handle->loop = loop;
-    handle->self->handle_timer = handle;
-    handle->self->type = TIMER;
+    handle->self->loop = loop;
+    handle->self->vtbl = &timer_vtbl;
     handle->timeout = 0;
     handle->repeat = 0;
     handle->timeout = 0;
@@ -17,7 +22,7 @@ uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
 
 int
 uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat){
-    loopFSM_t* loop = handle->loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
 
     uint64 clamped_timeout;
 
@@ -31,19 +36,7 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
     handle->timeout = clamped_timeout;
     handle->repeat = repeat;
 
-    // Add to loop active handlers
-    uv_handle_t** handlers = loop->active_handlers;
-    int i = loop->n_active_handlers; // array index
-
-    if(loop->n_active_handlers == 0){
-        *handlers = malloc(sizeof(uv_signal_t));
-        memcpy((uv_handle_t*)handlers[0], handle->self, sizeof(uv_handle_t));
-    } else {
-        *handlers = realloc(*handlers, sizeof(uv_handle_t[i]));
-        memcpy((uv_handle_t*)handlers[i], handle->self, sizeof(uv_handle_t));
-    }
-
-    loop->n_active_handlers++;
+    insert_handle(loop, (uv_handle_t*)handle);
 
     // TODO
     // libuv original hace algo que no termino de entender bien (diria que es para ordenar los timers)
@@ -53,6 +46,7 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
 
 int
 uv_timer_stop(uv_timer_t* handle){
+<<<<<<< HEAD
     loopFSM_t* loop = handle->loop->loopFSM->user_data;
 
     // Allocate memory for new array of handlers
@@ -68,9 +62,12 @@ uv_timer_stop(uv_timer_t* handle){
             }
         }
     }
+=======
+    loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
+>>>>>>> develop_oo-handles
 
-    // Exchange in loop structure
-    loop->active_handlers = new_handlers;
+    remove_handle(loop, (uv_handle_t*)handle);
+    
     return 0;
 }
 
@@ -83,4 +80,17 @@ uv_timer_again(uv_timer_t* handle){
     }
 
     return 0;
+}
+
+void
+run_timer(uv_handle_t* handle){
+    uv_timer_t* timer = (uv_timer_t*) handle;
+    loopFSM_t* loop = timer->self->loop->loopFSM->user_data;
+
+    if(timer->timeout > loop->time)
+        return 0;
+
+    uv_timer_stop(timer);
+    uv_timer_again(timer);
+    timer->timer_cb(timer);
 }

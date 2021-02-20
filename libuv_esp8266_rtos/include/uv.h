@@ -19,15 +19,9 @@
 #define SIGNAL_TASK_PRIORITY 4
 #define LOOP_RATE_MS 100
 
-/// Enumeration
-typedef enum{
-    TIMER,
-    SIGNAL,
-    TCP,
-    CHECK
-} handle_type;
-
 /// Declaration
+
+typedef struct handle_vtbl_s handle_vtbl_t;
 
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
@@ -61,14 +55,19 @@ typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 // For check purposes
 typedef void (*uv_check_cb)(uv_check_t* handle);
 
-
-/// Structs for parameters to create task
-
-struct signal_cb_param_s {
-    uv_signal_t* handle;
-    int signum;
+// handle "class"
+struct uv_handle_s {
+    handle_vtbl_t *vtbl;
+    uv_loop_t* loop;
 };
 
+// virtual table for every handle
+struct handle_vtbl_s {
+    void (*run)(uv_handle_t* handle);
+};
+
+// polymorphic method
+void handle_run(uv_handle_t* handle);
 
 /// Types definition
 
@@ -80,24 +79,13 @@ struct uv_connect_s {
 
 };
 
-struct uv_handle_s {
-    union
-    {
-        uv_tcp_t* handle_tcp;
-        uv_signal_t* handle_signal;
-        uv_timer_t* handle_timer;
-        uv_check_t* handle_check;
-    };
-    handle_type type;
-};
-
 struct uv_check_s {
-    uv_loop_t* loop;
-    uv_check_cb cb;
     uv_handle_t* self;
+    uv_check_cb cb;
 };
 
 struct uv_tcp_s {
+    uv_handle_t* self;
     uv_loop_t* loop;
     uint64 flags;
     uv_read_cb read_cb;
@@ -114,18 +102,16 @@ struct uv_buf_s {
 };
 
 struct uv_timer_s {
-    uv_loop_t* loop;
+    uv_handle_t* self;
     uv_timer_cb timer_cb;
     uint64 timeout;
     uint64 repeat;
-    uv_handle_t* self;
 };
 
 struct uv_signal_s {
-    uv_loop_t* loop;
+    uv_handle_t* self;
     uv_signal_cb signal_cb;
     int signum; // indicates pin
-    uv_handle_t* self;
     uint64 intr_bit : 1;
 };
 
@@ -167,8 +153,8 @@ void signal_isr(loopFSM_t* loop);
 // Check function prototypes
 
 int uv_check_init(uv_loop_t* loop, uv_check_t* check);
-int uv_check_start(uv_check_t* check, uv_check_cb cb);
-int uv_check_close(uv_check_t* check);
+int uv_check_start(uv_check_t* handle, uv_check_cb cb);
+int uv_check_close(uv_check_t* handle);
 
 // Loop function prototypes
 
@@ -177,6 +163,7 @@ int uv_loop_close (uv_loop_t* loop);
 uint32_t uv_now(const uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
 
+<<<<<<< HEAD
 void run_signal(uv_signal_t* signal);
 void run_timer(uv_timer_t* timer);
 void main_handler(uv_handle_t* handler);
@@ -187,5 +174,10 @@ typedef struct sockaddr{
     unsigned short sa_family;
     char sa_data[14];
 }sockaddr;
+=======
+// Core function prototypes
+int remove_handle(loopFSM_t* loop, uv_handle_t* handle);
+int insert_handle(loopFSM_t* loop, uv_handle_t* handle);
+>>>>>>> develop_oo-handles
 
 #endif /* UV_H */
