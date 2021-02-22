@@ -12,7 +12,7 @@
 #include "freertos/task.h"
 #include "esp_common.h"
 #include "espconn.h"
-#include "lwip/sockets.h"
+#include "lwip/api.h"
 
 /// Some global constants
 
@@ -125,6 +125,12 @@ struct uv_tcp_s {
     uv_connect_cb connect_cb;
     uv_write_cb write_cb;
     struct espconn* espconn_s;
+
+    uv_connect_t** connect_requests;
+    int n_connect_requests;
+
+    int n_accept_requests;
+    int n_listen_requests;
 };
 
 struct uv_buf_s {

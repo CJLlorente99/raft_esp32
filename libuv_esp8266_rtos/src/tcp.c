@@ -33,6 +33,7 @@ static handle_vtbl_t tcp_vtbl = {
 int
 uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     // no hace falta crear una funcion como tal ya que uv__stream_init solo se usa aqui
+    tcp->self = malloc(sizeof(uv_handle_t));
     tcp->self->loop = loop_s;
     tcp->self->vtbl = &tcp_vtbl;
 
@@ -45,6 +46,9 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     tcp->close_cb = NULL;
     tcp->connection_cb = NULL;
     tcp->read_cb = NULL;
+
+    tcp->n_connect_requests = 0;
+    tcp->connect_requests = NULL;
 
     // añadir a los handlers a los que se tiene que llamar desde el loop
     insert_handle(loop, (uv_handle_t*)tcp);
@@ -93,8 +97,12 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
         // do something because error might have ocurred
     }
 
-    int status = 0;
-    cb(req, status);
+    handle->n_connect_requests++;
+
+    handle->connect_requests = realloc(handle->connect_requests, (handle->n_connect_requests)* sizeof(uv_connect_t*));
+    handle->connect_requests[handle->n_connect_requests - 1] = req;
+    // memcpy(handle->connect_requests[handle->n_connect_requests - 1], &req, sizeof(uv_connect_t*))
+
 }
 
 // run implementation for tcps
@@ -102,4 +110,32 @@ void
 run_tcp(uv_handle_t* handle){
     // TODO
     // reactor
+    uv_tcp_t* tcp = (uv_tcp_t*) handle;
+    if(tcp->n_connect_requests > 0){
+        int j = 0;
+        for(int i = 0; i < tcp->n_connect_requests; i++){
+            if(espconn_connect(tcp->espconn_s)){
+                int status = 0; // lo que devuelve espconn_connect
+                tcp->connect_cb(tcp->connect_requests[i], status);
+
+                j++;
+            }
+            // TODO
+            // dejar los request no atendidos, quitar los atendidos
+        }
+        tcp->n_connect_requests -= j;
+    }
+
+    if(tcp->n_accept_requests > 0){
+        if(espconn_accept(tcp->espconn_s)){
+            espconn_recv_hold(tcp->espconn_s);
+            tcp->n_accept_requests = 0;
+
+        }
+    }
+
+    if(tcp->n_listen_requests > 0){
+        int status = 0;
+        tcp->connection_cb((uv_stream_t*)handle, status);
+    }
 }

@@ -58,8 +58,6 @@ main_signal(void* ignore){
         // do something because error has been caused
     }
 
-    GPIO_OUTPUT_SET(LED_DEBUG_PORT,0);
-
     rv = uv_signal_init(loop, signal_handle_off);
     if(rv != 0){
         // do something because error has been caused
@@ -194,5 +192,5 @@ uint32_t user_rf_cal_sector_set(void)
 void user_init(void)
 {
     espconn_init();
-    xTaskCreate(&main_timer, "startup", 2048, NULL, 1, NULL);
+    xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
 }

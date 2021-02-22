@@ -80,6 +80,7 @@ signal_isr(loopFSM_t* loop){
 // run implementation for signals
 void
 run_signal(uv_handle_t* handle){
+    GPIO_OUTPUT_SET(LED_DEBUG_PORT,1);
     uv_signal_t* signal = (uv_signal_t*) handle;
     if(signal->intr_bit){
         signal->signal_cb(signal, signal->signum);
