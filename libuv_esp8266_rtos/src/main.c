@@ -83,7 +83,7 @@ main_signal(void* ignore){
 // #define ONE_SHOT_CLOCK_TRIGGER_PORT 15
 // #define LED_ONE_SHOT_PORT 17
 // #define LED_TWO_SEC_PORT 18
-#define LED_HALF_SEC_PORT 19
+#define LED_HALF_SEC_PORT 2
 
 void
 half_sec_callback_on (uv_timer_t* handle){
@@ -194,5 +194,5 @@ uint32_t user_rf_cal_sector_set(void)
 void user_init(void)
 {
     espconn_init();
-    xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
+    xTaskCreate(&main_timer, "startup", 2048, NULL, 1, NULL);
 }
