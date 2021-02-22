@@ -11,7 +11,7 @@ To be verified
 #define INPUT_TEST_PORT_OFF 15
 #define INPUT_TEST_PORT_ON 4
 #define LED_TEST_PORT 13
-#define LED_DEBUG_PORT 3
+#define LED_DEBUG_PORT 5
 
 void
 test_callback_on (uv_signal_t* handle, int signum){
@@ -27,7 +27,7 @@ void
 main_signal(void* ignore){
     // Test led to be illuminated if execution begins
     GPIO_AS_OUTPUT(LED_DEBUG_PORT);
-    GPIO_OUTPUT_SET(LED_DEBUG_PORT, 1);
+    GPIO_OUTPUT_SET(LED_DEBUG_PORT,0);
 
     // Configure GPIO
     GPIO_AS_OUTPUT(LED_TEST_PORT);
@@ -52,10 +52,13 @@ main_signal(void* ignore){
         // do something because error has been caused
     }
 
+    // Aqui hay un error
     rv = uv_signal_start(signal_handle_on, test_callback_on, INPUT_TEST_PORT_ON);
     if(rv != 0){
         // do something because error has been caused
     }
+
+    GPIO_OUTPUT_SET(LED_DEBUG_PORT,0);
 
     rv = uv_signal_init(loop, signal_handle_off);
     if(rv != 0){
@@ -77,43 +80,26 @@ main_signal(void* ignore){
 
 // TIMER TEST
 
-#define ONE_SHOT_CLOCK_TRIGGER_PORT 15
-#define LED_ONE_SHOT_PORT 17
-#define LED_TWO_SEC_PORT 18
+// #define ONE_SHOT_CLOCK_TRIGGER_PORT 15
+// #define LED_ONE_SHOT_PORT 17
+// #define LED_TWO_SEC_PORT 18
 #define LED_HALF_SEC_PORT 19
 
 void
-one_shot_callback (uv_timer_t* handle){
-    GPIO_OUTPUT_SET(LED_ONE_SHOT_PORT,1);
-    vTaskDelay(1000/portTICK_RATE_MS);
-    GPIO_OUTPUT_SET(LED_ONE_SHOT_PORT,0);
-}
-
-void
-two_sec_callback (uv_timer_t* handle){
-    GPIO_OUTPUT_SET(LED_TWO_SEC_PORT,1);
-    vTaskDelay(250/portTICK_RATE_MS);
-    GPIO_OUTPUT_SET(LED_TWO_SEC_PORT,0);
-}
-
-void
-half_sec_callback (uv_timer_t* handle){
+half_sec_callback_on (uv_timer_t* handle){
     GPIO_OUTPUT_SET(LED_HALF_SEC_PORT,1);
-    vTaskDelay(250/portTICK_RATE_MS);
+}
+
+void
+half_sec_callback_off (uv_timer_t* handle){
     GPIO_OUTPUT_SET(LED_HALF_SEC_PORT,0);
 }
 
 void
-main_timer(void* ignore){
-    // Test led to be illuminated if execution begins
-    GPIO_AS_OUTPUT(LED_DEBUG_PORT);
-    GPIO_OUTPUT_SET(LED_DEBUG_PORT, 1);
-    
+main_timer(void* ignore){   
     // Configure GPIO
     GPIO_AS_OUTPUT(LED_HALF_SEC_PORT);
-    GPIO_AS_OUTPUT(LED_ONE_SHOT_PORT);
-    GPIO_AS_OUTPUT(LED_TWO_SEC_PORT);
-    GPIO_AS_INPUT(ONE_SHOT_CLOCK_TRIGGER_PORT);
+    GPIO_AS_OUTPUT(LED_DEBUG_PORT);
 
     // Init loop
     uv_loop_t* loop = malloc(sizeof(uv_loop_t));
@@ -125,31 +111,25 @@ main_timer(void* ignore){
     }
 
     // Init timers
-    uv_timer_t* timer_two_sec = malloc(sizeof(uv_timer_t));
-    uv_timer_t* timer_half_sec = malloc(sizeof(uv_timer_t));
-    uv_timer_t* timer_one_shot = malloc(sizeof(uv_timer_t));
+    uv_timer_t* timer_half_sec_on = malloc(sizeof(uv_timer_t));
+    uv_timer_t* timer_half_sec_off = malloc(sizeof(uv_timer_t));
 
-    rv = uv_timer_init(loop, timer_two_sec);
+    rv = uv_timer_init(loop, timer_half_sec_on);
     if(rv != 0){
         // do something because error has been caused
     }
 
-    rv = uv_timer_init(loop, timer_one_shot);
+    rv = uv_timer_init(loop, timer_half_sec_off);
     if(rv != 0){
         // do something because error has been caused
     }
 
-    rv = uv_timer_init(loop, timer_half_sec);
+    rv = uv_timer_start(timer_half_sec_on, half_sec_callback_on, 0, 1000);
     if(rv != 0){
         // do something because error has been caused
     }
 
-    rv = uv_timer_start(timer_two_sec, two_sec_callback, 2000, 1);
-    if(rv != 0){
-        // do something because error has been caused
-    }
-
-    rv = uv_timer_start(timer_half_sec, half_sec_callback, 500, 1);
+    rv = uv_timer_start(timer_half_sec_off, half_sec_callback_off, 500, 1000);
     if(rv != 0){
         // do something because error has been caused
     }
@@ -214,5 +194,5 @@ uint32_t user_rf_cal_sector_set(void)
 void user_init(void)
 {
     espconn_init();
-    xTaskCreate(&main_timer, "startup", 2048, NULL, 1, NULL);
+    xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
 }

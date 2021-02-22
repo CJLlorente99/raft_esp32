@@ -14,11 +14,13 @@ static handle_vtbl_t timer_vtbl = {
 
 int
 uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
+    handle->self = malloc(sizeof(uv_handle_t));
     handle->self->loop = loop;
     handle->self->vtbl = &timer_vtbl;
+
     handle->timeout = 0;
     handle->repeat = 0;
-    handle->timeout = 0;
+    handle->timer_cb = NULL;
     return 0;
 }
 

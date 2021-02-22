@@ -1,5 +1,7 @@
 #include "uv.h"
 
+#define LED_DEBUG_PORT 5
+
 // FSM states
 enum states {
     IDLE,
@@ -12,7 +14,6 @@ static int
 check_all_handlers_run (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
     if(p_this->n_active_handlers == p_this->n_handlers_run){
-        p_this->n_handlers_run = 0;
         return 1;
     }
     return 0;
@@ -24,12 +25,20 @@ check_is_closing (fsm_t* this){
     return p_this->loop_is_closing;
 }
 
+static int
+check_is_starting (fsm_t* this){
+    loopFSM_t* p_this = this->user_data;
+    return p_this->loop_is_starting;
+}
+
 // FSM functions (static void)
 
 // call every signal handler
 static void
 run_handlers (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
+    p_this->n_handlers_run = 0;
+    p_this->loop_is_starting = 0;
     uv_update_time(p_this);
     if(p_this->n_active_handlers > 0){
         for(int i = 0; i < p_this->n_active_handlers; i++){
@@ -47,16 +56,23 @@ fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 	static fsm_trans_t loopFSM_tt[] = {
         { RUN, check_all_handlers_run, RUN, run_handlers },
         { RUN, check_is_closing, IDLE, NULL},
+        { IDLE, check_is_starting, RUN, run_handlers},
 		{ -1, NULL, -1, NULL},
 	};
 
-	return fsm_new (RUN, loopFSM_tt, loop);
+	return fsm_new (IDLE, loopFSM_tt, loop);
 }
 
 int
 uv_loop_init (uv_loop_t* loop){
     loopFSM_t* newLoopFSM = malloc(sizeof(loopFSM_t));
-    memset(loop,0,sizeof(uv_loop_t));
+
+    newLoopFSM->active_handlers = NULL;
+    newLoopFSM->n_active_handlers = 0;
+    newLoopFSM->n_handlers_run = 0;
+    newLoopFSM->loop_is_closing = 0;
+    newLoopFSM->loop_is_starting = 1;
+
     loop->loopFSM = fsm_new_loopFSM (newLoopFSM);
     return 0;
 }

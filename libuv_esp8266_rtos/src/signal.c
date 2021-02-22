@@ -1,5 +1,7 @@
 #include "uv.h"
 
+#define LED_DEBUG_PORT 5
+
 // EL UNICO USO QUE SE HACE DEL SIGNAL EN RAFT ES PARA CAPTAR SEÑALES DE INTERRUPCION
 // GENERADAS POR EL USER
 
@@ -12,8 +14,13 @@ static handle_vtbl_t signal_vtbl = {
 
 int 
 uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){
+    handle->self = malloc(sizeof(uv_handle_t));
     handle->self->loop = loop;
     handle->self->vtbl = &signal_vtbl;
+
+    handle->intr_bit = 0;
+    handle->signal_cb = NULL;
+    handle->signum = 0;
     return 0;
 }
 
@@ -32,9 +39,10 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
     // Init interrupt for given signum
 
     GPIO_AS_INPUT(signum);
-    gpio_pin_intr_state_set(signum, GPIO_PIN_INTR_POSEDGE);
+    gpio_pin_intr_state_set(signum, GPIO_PIN_INTR_NEGEDGE);
     gpio_intr_handler_register(&signal_isr, loop); // maybe this should be called only once.
 
+    // Hay un fallo aqui
     insert_handle(loop, (uv_handle_t*)handle);
 
     return 0;
