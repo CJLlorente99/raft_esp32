@@ -7,12 +7,11 @@
 #include <stdbool.h>
 
 #include "fsm.h"
-#include "gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_common.h"
 #include "espconn.h"
-#include "lwip/api.h"
+#include "gpio.h"
 
 /// Some global constants
 
@@ -69,7 +68,7 @@ typedef void (*uv_fs_cb)(uv_fs_t* req);
 
 // handle "class"
 struct uv_handle_s {
-    handle_vtbl_t *vtbl;
+    handle_vtbl_t* vtbl;
     uv_loop_t* loop;
 };
 
@@ -186,7 +185,7 @@ int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
 int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum);
 int uv_signal_stop(uv_signal_t* handle);
 
-void signal_isr(loopFSM_t* loop);
+static void signal_isr(loopFSM_t* loop);
 
 // Check function prototypes
 

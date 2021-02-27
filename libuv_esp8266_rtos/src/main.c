@@ -40,8 +40,10 @@ main_signal(void* ignore){
 
     rv = uv_loop_init(loop);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Loop inicializado ERROR \n");
     }
+
+    printf("Loop inicializado \n");
 
     // Init signal handle
     uv_signal_t* signal_handle_on = malloc(sizeof(uv_signal_t));
@@ -49,24 +51,32 @@ main_signal(void* ignore){
 
     rv = uv_signal_init(loop, signal_handle_on);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Primera senal inicializada FALLO \n");
     }
+
+    printf("Primera senal inicializada \n");
 
     // Aqui hay un error
     rv = uv_signal_start(signal_handle_on, test_callback_on, INPUT_TEST_PORT_ON);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Primera senal start FALLO \n");
     }
+
+    printf("Primera senal start \n");
 
     rv = uv_signal_init(loop, signal_handle_off);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Segunda senal inicializada FALLO \n");
     }
+
+    printf("Segunda senal inicializada \n");
 
     rv = uv_signal_start(signal_handle_off, test_callback_off, INPUT_TEST_PORT_OFF);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Segunda senal start FALLO \n");
     }
+
+    printf("Segunda senal start \n");
 
     rv = uv_run(loop);
     if(rv != 0){
@@ -191,6 +201,8 @@ uint32_t user_rf_cal_sector_set(void)
 *******************************************************************************/
 void user_init(void)
 {
-    espconn_init();
-    xTaskCreate(&main_signal, "startup", 2048, NULL, 1, NULL);
+    // Enable GPIO interrupts
+    _xt_isr_unmask(1 << ETS_GPIO_INUM);
+
+    xTaskCreate(&main_signal, "startup", 2048, NULL, 5, NULL);
 }

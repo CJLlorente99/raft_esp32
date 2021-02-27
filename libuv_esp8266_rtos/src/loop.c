@@ -67,6 +67,11 @@ int
 uv_loop_init (uv_loop_t* loop){
     loopFSM_t* newLoopFSM = malloc(sizeof(loopFSM_t));
 
+    if(!newLoopFSM){
+        printf("Error during malloc in loop init");
+        return 1;
+    }
+
     newLoopFSM->active_handlers = NULL;
     newLoopFSM->n_active_handlers = 0;
     newLoopFSM->n_handlers_run = 0;
@@ -74,6 +79,11 @@ uv_loop_init (uv_loop_t* loop){
     newLoopFSM->loop_is_starting = 1;
 
     loop->loopFSM = fsm_new_loopFSM (newLoopFSM);
+
+    if(!loop->loopFSM){
+        printf("Error during fsm creation");
+        return 1;
+    }
     return 0;
 }
 
@@ -95,7 +105,9 @@ int
 uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is used in raft
     portTickType xLastTime = xTaskGetTickCount();
     const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
+    printf("Entrando en bucle uv_run\n");
     while(true){
+        printf("Loop iteration\n");
         fsm_fire(loop->loopFSM);
         vTaskDelayUntil(&xLastTime, xFrequency);
     }
@@ -110,5 +122,10 @@ uv_update_time(loopFSM_t* loop){
 void
 handle_run(uv_handle_t* handle){
     // AQUI HAY UN ERROR!
-    handle->vtbl->run(handle);
+    uv_handle_t** aux_handle = (uv_handle_t**) handle;
+    if (!(*aux_handle)->vtbl->run){
+        printf("Error a entrar al llamar a run\n");
+        return;
+    }
+    (*aux_handle)->vtbl->run(handle);
 }

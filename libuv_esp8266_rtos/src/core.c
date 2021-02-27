@@ -9,16 +9,26 @@ insert_handle(loopFSM_t* loop, uv_handle_t* handle){
     // ERROR AQUI!!
     if(i == 1){
         loop->active_handlers = malloc(sizeof(uv_handle_t*));
+        if(!loop->active_handlers){
+            printf("Fallo en el malloc de insert_handle");
+            return 1;
+        }
+            
         // memcpy(*handlers, &handle, sizeof(uv_handle_t*));
         *(loop->active_handlers) = handle;
     } else{
         loop->active_handlers = realloc(loop->active_handlers, i * sizeof(uv_handle_t*));
+        if(!loop->active_handlers){
+            printf("Fallo en el malloc de insert_handle");
+            return 1;
+        }
         // memcpy(handlers[i-1], &handle, sizeof(uv_handle_t*));
         loop->active_handlers[i-1] = handle;
     }
 
     loop->n_active_handlers = i;
 
+    return 0;
 }
 
 int

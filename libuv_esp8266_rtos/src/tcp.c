@@ -54,62 +54,62 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     insert_handle(loop, (uv_handle_t*)tcp);
 }
 
-int
-uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
-    unsigned int addrlen;
+// int
+// uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
+//     unsigned int addrlen;
 
-    // Can only be used in ipv4 version
-    // this function creates a socket (AF_INET4) and stores it inside handle as a fd
-    // sets sockets options (SOL_SOCKET, SO_REUSEADDR, etc)
-    // finally binds the socket to the IPv4 address
+//     // Can only be used in ipv4 version
+//     // this function creates a socket (AF_INET4) and stores it inside handle as a fd
+//     // sets sockets options (SOL_SOCKET, SO_REUSEADDR, etc)
+//     // finally binds the socket to the IPv4 address
 
-    // PROBLEMS -> sockaddr exists in esp8266 rtos?
+//     // PROBLEMS -> sockaddr exists in esp8266 rtos?
     
-    // TODO
-    // take address from struct sockaddr
-    // Understanding how espconn works, this function should only safe the information given in the arguments
+//     // TODO
+//     // take address from struct sockaddr
+//     // Understanding how espconn works, this function should only safe the information given in the arguments
 
-    int rv = 0;
+//     int rv = 0;
 
-    if(rv != 0){
-        // do something because error might have ocurred
-    }
+//     if(rv != 0){
+//         // do something because error might have ocurred
+//     }
 
 
-}
+// }
 
-int
-uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr, uv_connect_cb cb){
-    // this function connects the socket in handle to addr in sockeaddr
-    // once connection is completed callback is triggered (added to the correspondant state in loop FSM to be executed once)
-    // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
+// int
+// uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr, uv_connect_cb cb){
+//     // this function connects the socket in handle to addr in sockeaddr
+//     // once connection is completed callback is triggered (added to the correspondant state in loop FSM to be executed once)
+//     // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
     
-    // Use espconn_connect
-    // it is recommended to use espconn_port to get an available local port
-    // espconn_recv_hold?
+//     // Use espconn_connect
+//     // it is recommended to use espconn_port to get an available local port
+//     // espconn_recv_hold?
 
-    handle->connect_cb = cb;
 
-    int rv = 0;
+//     handle->connect_cb = cb;
 
-    // rv = handle->espconn_s->proto.tcp->remote_ip = addr->sa_data;
-    if(rv != 0){
-        // do something because error might have ocurred
-    }
+//     int rv = 0;
 
-    handle->n_connect_requests++;
+//     // rv = handle->espconn_s->proto.tcp->remote_ip = addr->sa_data;
+//     if(rv != 0){
+//         // do something because error might have ocurred
+//     }
 
-    handle->connect_requests = realloc(handle->connect_requests, (handle->n_connect_requests)* sizeof(uv_connect_t*));
-    handle->connect_requests[handle->n_connect_requests - 1] = req;
-    // memcpy(handle->connect_requests[handle->n_connect_requests - 1], &req, sizeof(uv_connect_t*))
+//     handle->n_connect_requests++;
 
-}
+//     handle->connect_requests = realloc(handle->connect_requests, (handle->n_connect_requests)* sizeof(uv_connect_t*));
+//     handle->connect_requests[handle->n_connect_requests - 1] = req;
+//     // memcpy(handle->connect_requests[handle->n_connect_requests - 1], &req, sizeof(uv_connect_t*))
+
+// }
 
 // run implementation for tcps
 void
 run_tcp(uv_handle_t* handle){
     // TODO
-    // reactor
     uv_tcp_t* tcp = (uv_tcp_t*) handle;
     if(tcp->n_connect_requests > 0){
         int j = 0;
