@@ -145,7 +145,7 @@ struct uv_timer_s {
 };
 
 struct uv_signal_s {
-    uv_handle_t* self;
+    uv_handle_t self;
     uv_signal_cb signal_cb;
     int signum; // indicates pin
     uint64 intr_bit : 1;

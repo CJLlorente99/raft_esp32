@@ -42,13 +42,10 @@ run_handlers (fsm_t* this){
     uv_update_time(p_this);
     if(p_this->n_active_handlers > 0){
         for(int i = 0; i < p_this->n_active_handlers; i++){
-            printf("Ejecutando timer numero %d\n", i);
             uv_update_time(p_this);
             uv_timer_t* timer = (uv_timer_t*)p_this->active_handlers[i];
-            printf("Tim. %d, rep. %d\n", (uint32_t)timer->timeout, timer->repeat);
             handle_run(p_this->active_handlers[i]);
             p_this->n_handlers_run++;
-            printf("Handlers run %d\n", p_this->n_handlers_run);
         }
     }
 }

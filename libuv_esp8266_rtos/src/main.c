@@ -8,7 +8,7 @@ To be verified
 
 // SIGNAL TEST
 
-#define INPUT_TEST_PORT_OFF 15
+#define INPUT_TEST_PORT_OFF 3
 #define INPUT_TEST_PORT_ON 4
 #define LED_TEST_PORT 13
 #define LED_DEBUG_PORT 5
@@ -96,13 +96,11 @@ main_signal(void* ignore){
 void
 half_sec_callback_on (uv_timer_t* handle){
     GPIO_OUTPUT_SET(LED_HALF_SEC_PORT,1);
-    printf("Encendiendo luz\n");
 }
 
 void
 half_sec_callback_off (uv_timer_t* handle){
     GPIO_OUTPUT_SET(LED_HALF_SEC_PORT,0);
-    printf("Apagando luz\n");
 }
 
 void
@@ -214,8 +212,8 @@ uint32_t user_rf_cal_sector_set(void)
 void user_init(void)
 {
     // Enable GPIO interrupts
-    // _xt_isr_unmask(1 << ETS_GPIO_INUM);
+    _xt_isr_unmask(1 << ETS_GPIO_INUM);
 
     vTaskDelay(5000/portTICK_RATE_MS);
-    xTaskCreate(&main_timer, "startup", 2048, NULL, 5, NULL);
+    xTaskCreate(&main_signal, "startup", 2048, NULL, 5, NULL);
 }
