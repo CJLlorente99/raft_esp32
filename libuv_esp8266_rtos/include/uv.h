@@ -138,10 +138,10 @@ struct uv_buf_s {
 };
 
 struct uv_timer_s {
-    uv_handle_t* self;
+    uv_handle_t self;
     uv_timer_cb timer_cb;
-    uint64 timeout;
-    uint64 repeat;
+    uint32_t timeout;
+    uint32_t repeat;
 };
 
 struct uv_signal_s {
@@ -158,7 +158,7 @@ struct uv_loop_s {
 //Fsm needed data
 struct loopFSM_s
 {
-    uint64 time;
+    uint32_t time;
 
     int loop_is_closing : 1;
     int loop_is_starting : 1;

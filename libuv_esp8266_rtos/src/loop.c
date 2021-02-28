@@ -14,6 +14,7 @@ static int
 check_all_handlers_run (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
     if(p_this->n_active_handlers == p_this->n_handlers_run){
+        p_this->n_handlers_run = 0;
         return 1;
     }
     return 0;
@@ -37,14 +38,17 @@ check_is_starting (fsm_t* this){
 static void
 run_handlers (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
-    p_this->n_handlers_run = 0;
     p_this->loop_is_starting = 0;
     uv_update_time(p_this);
     if(p_this->n_active_handlers > 0){
         for(int i = 0; i < p_this->n_active_handlers; i++){
+            printf("Ejecutando timer numero %d\n", i);
             uv_update_time(p_this);
+            uv_timer_t* timer = (uv_timer_t*)p_this->active_handlers[i];
+            printf("Tim. %d, rep. %d\n", (uint32_t)timer->timeout, timer->repeat);
             handle_run(p_this->active_handlers[i]);
             p_this->n_handlers_run++;
+            printf("Handlers run %d\n", p_this->n_handlers_run);
         }
     }
 }
@@ -77,6 +81,7 @@ uv_loop_init (uv_loop_t* loop){
     newLoopFSM->n_handlers_run = 0;
     newLoopFSM->loop_is_closing = 0;
     newLoopFSM->loop_is_starting = 1;
+    newLoopFSM->time = system_get_time()/1000;
 
     loop->loopFSM = fsm_new_loopFSM (newLoopFSM);
 
@@ -107,7 +112,7 @@ uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is us
     const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
     printf("Entrando en bucle uv_run\n");
     while(true){
-        printf("Loop iteration\n");
+        // printf("Loop iteration\n");
         fsm_fire(loop->loopFSM);
         vTaskDelayUntil(&xLastTime, xFrequency);
     }
@@ -116,16 +121,15 @@ uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is us
 
 void
 uv_update_time(loopFSM_t* loop){
-    loop->time = (uint64)system_get_time()/1000;
+    loop->time = system_get_time()/1000;
 }
 
 void
 handle_run(uv_handle_t* handle){
     // AQUI HAY UN ERROR!
-    uv_handle_t** aux_handle = (uv_handle_t**) handle;
-    if (!(*aux_handle)->vtbl->run){
+    if (!(handle->vtbl->run)){
         printf("Error a entrar al llamar a run\n");
         return;
     }
-    (*aux_handle)->vtbl->run(handle);
+    handle->vtbl->run(handle);
 }

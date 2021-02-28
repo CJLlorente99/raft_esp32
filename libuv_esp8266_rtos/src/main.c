@@ -96,11 +96,13 @@ main_signal(void* ignore){
 void
 half_sec_callback_on (uv_timer_t* handle){
     GPIO_OUTPUT_SET(LED_HALF_SEC_PORT,1);
+    printf("Encendiendo luz\n");
 }
 
 void
 half_sec_callback_off (uv_timer_t* handle){
     GPIO_OUTPUT_SET(LED_HALF_SEC_PORT,0);
+    printf("Apagando luz\n");
 }
 
 void
@@ -115,8 +117,10 @@ main_timer(void* ignore){
 
     rv = uv_loop_init(loop);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Loop inicializado ERROR \n");
     }
+
+    printf("Loop inicializado \n");
 
     // Init timers
     uv_timer_t* timer_half_sec_on = malloc(sizeof(uv_timer_t));
@@ -124,27 +128,35 @@ main_timer(void* ignore){
 
     rv = uv_timer_init(loop, timer_half_sec_on);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Primer timer inicializado ERROR\n");
     }
+
+    printf("Primer timer inicializado \n");
 
     rv = uv_timer_init(loop, timer_half_sec_off);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Segundo timer inicializado ERROR\n");
     }
 
-    rv = uv_timer_start(timer_half_sec_on, half_sec_callback_on, 0, 1000);
+    printf("Segundo timer inicializado\n");
+
+    rv = uv_timer_start(timer_half_sec_on, half_sec_callback_on, 500, 1000);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Primer timer empezado ERROR\n");
     }
 
-    rv = uv_timer_start(timer_half_sec_off, half_sec_callback_off, 500, 1000);
+    printf("Primer timer empezado\n");
+
+    rv = uv_timer_start(timer_half_sec_off, half_sec_callback_off, 1000, 1000);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Segundo timer empezado ERROR\n");
     }
+
+    printf("Segundo timer empezado\n");
 
     rv = uv_run(loop);
     if(rv != 0){
-        // do something because error has been caused
+        printf("Error durante uv_run\n");
     }
 
     vTaskDelete(NULL);
@@ -202,7 +214,8 @@ uint32_t user_rf_cal_sector_set(void)
 void user_init(void)
 {
     // Enable GPIO interrupts
-    _xt_isr_unmask(1 << ETS_GPIO_INUM);
+    // _xt_isr_unmask(1 << ETS_GPIO_INUM);
 
-    xTaskCreate(&main_signal, "startup", 2048, NULL, 5, NULL);
+    vTaskDelay(5000/portTICK_RATE_MS);
+    xTaskCreate(&main_timer, "startup", 2048, NULL, 5, NULL);
 }
