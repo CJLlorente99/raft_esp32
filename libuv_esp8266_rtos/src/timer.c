@@ -41,8 +41,6 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
     handle->timeout = clamped_timeout;
     handle->repeat = (uint32_t)repeat;
 
-    printf("Timeout is %d, repeat is %d\n", (uint32_t)handle->timeout, handle->repeat);
-
     rv = insert_handle(loop, (uv_handle_t*)handle);
     if(rv != 0){
         printf("Error durante insert handle en timer start");
@@ -73,22 +71,18 @@ int
 uv_timer_again(uv_timer_t* handle){
     int rv;
 
-    printf("Volviendo a crear nuevo timer\n");
-
     if(handle->repeat){
         rv = uv_timer_stop(handle);
         if(rv != 0){
             printf("Error en timer stop durante timer again\n");
             return 1;
         }
-        printf("Timer stop durante timer again\n");
 
         rv = uv_timer_start(handle, handle->timer_cb, handle->repeat, handle->repeat);
         if(rv != 0){
             printf("Error en timer start durante timer again\n");
             return 1;
         }
-        printf("Timer start durante timer again\n");
     }
 
     return 0;
@@ -99,12 +93,9 @@ run_timer(uv_handle_t* handle){
     uv_timer_t* timer = (uv_timer_t*) handle;
     loopFSM_t* loop = timer->self.loop->loopFSM->user_data;
 
-    printf("Tiempo proximo evento %d\n", (timer->timeout));
-    printf("Tiempo actual %d\n", (loop->time));
     if(timer->timeout > loop->time)
         return;
 
-    printf("Tiempo cumplido\n");
     uv_timer_again(timer);
     timer->timer_cb(timer);
 }
