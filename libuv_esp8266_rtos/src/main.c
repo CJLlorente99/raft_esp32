@@ -215,5 +215,5 @@ void user_init(void)
     _xt_isr_unmask(1 << ETS_GPIO_INUM);
 
     vTaskDelay(5000/portTICK_RATE_MS);
-    xTaskCreate(&main_signal, "startup", 2048, NULL, 5, NULL);
+    xTaskCreate(&main_timer, "startup", 2048, NULL, 5, NULL);
 }
