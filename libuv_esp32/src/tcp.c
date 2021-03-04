@@ -57,7 +57,7 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     tcp->socket = tcp_socket;
 
     // añadir a los handlers a los que se tiene que llamar desde el loop
-    rv = insert_handle(loop, (uv_handle_t*)tcp);
+    rv = insert((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)tcp);
     if(rv != 0){
         ESP_LOGE("UV_TCP_INIT", "Error during insert handle in uv_tcp_init");
         return 1;
@@ -75,27 +75,35 @@ uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
     return 0;
 }
 
+// virtual table for connect requests
+static request_vtbl_t connect_req_vtbl = {
+    .run = run_connect_req
+};
+
 int
 uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr, uv_connect_cb cb){
     // this function connects the socket in handle to addr in sockeaddr
     // once connection is completed callback is triggered (added to the correspondant state in loop FSM to be executed once)
     // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
+    loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
 
+    req->req.vtbl = &connect_req_vtbl;
     req->req.loop = handle->self.loop;
     req->cb = cb;
     req->dest_sockaddr = addr;
+    req->status = 0;
 
-    handle->n_connect_requests++;
-    handle->connect_requests = realloc(handle->connect_requests, handle->n_connect_requests * sizeof(uv_connect_t*));
-    if(!handle->connect_requests){
-        ESP_LOGE("UV_TCP_CONNECT", "Error during realloc in uv_tcp_connect");
-        return 1;
-    }
-    memcpy(&(handle->connect_requests[handle->n_connect_requests-1]), &req, sizeof(uv_connect_t*));
+    // handle->n_connect_requests++;
+    // handle->connect_requests = realloc(handle->connect_requests, handle->n_connect_requests * sizeof(uv_connect_t*));
+    // if(!handle->connect_requests){
+    //     ESP_LOGE("UV_TCP_CONNECT", "Error during realloc in uv_tcp_connect");
+    //     return 1;
+    // }
+    // memcpy(&(handle->connect_requests[handle->n_connect_requests-1]), &req, sizeof(uv_connect_t*));
 
     /* Add request to the request list */
-    rv = insert_request(req, handle->self.loop);
+    rv = insert((void**)handle->connect_requests,&(handle->n_connect_requests), sizeof(uv_request_t*), (void*)req);
     if(rv != 0){
         ESP_LOGE("UV_TCP_CONNECT", "Error during insert_request in uv_tcp_connect");
     }
@@ -110,6 +118,7 @@ run_tcp(uv_handle_t* handle){
     // this function checks if any tcp/stream function has been called and tries to execute it
     // if it is executed, creates a request for the function callback
     uv_tcp_t* tcp = (uv_tcp_t*)handle;
+    loopFSM_t* loop = tcp->self.loop->loopFSM->user_data;
     int rv;
 
     if(tcp->bind){
@@ -125,12 +134,24 @@ run_tcp(uv_handle_t* handle){
         for(int i = 0; i < tcp->n_connect_requests; i++){
             rv = connect(tcp->socket, tcp->connect_requests[i]->dest_sockaddr, sizeof(struct sockaddr));
             if(rv != 0){
+                // TODO
+                // No siempre que sea = -1 es error. Usar errno.h para saber que tipo de error ha sido y si debe volver a intentarse
                 ESP_LOGE("RUN_TCP", "Error during connect in run tcp");
                 return;
             }
             tcp->n_connect_requests--;
             // add request to be called in following state (run_requests)
             // take out request from tcp object
+            rv = insert((void**)loop->active_requests,&(loop->n_active_requests), sizeof(uv_request_t*), (void*)tcp->connect_requests[i]);
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP", "Error during insert in run_tcp");
+                return;
+            }
+            rv = remove((void**)tcp->connect_requests,&(tcp->n_connect_requests), sizeof(uv_request_t*), (void*)tcp->connect_requests[i]);
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP", "Error during remove in run_tcp");
+                return;
+            }
         }
     }
 
@@ -144,10 +165,20 @@ run_tcp(uv_handle_t* handle){
             tcp->n_listen_requests--;
             // add request to be called in following state (run_requests)
             // take out  request from tcp object
+            rv = insert((void**)loop->active_requests,&(loop->n_active_requests), sizeof(uv_request_t*), (void*)tcp->listen_requests[i]);
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP", "Error during insert in run_tcp");
+                return;
+            }
+            rv = remove((void**)tcp->listen_requests,&(tcp->n_listen_requests), sizeof(uv_request_t*), (void*)tcp->listen_requests[i]);
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP", "Error during remove in run_tcp");
+                return;
         }
     }
 
-    if(tcp->n_accept_requests > 0){
+    // accept es bloqueante, ver el fd y ver si hay algo que leer
+    if(tcp->n_accept_requests > 0){ 
         for(int i = 0; i < tcp->n_listen_requests; i++){
             rv = accept(tcp->socket, tcp->accept_requests[i]->client->src_sockaddr, sizeof(struct sockaddr));
             if(rv != 0){
@@ -155,7 +186,7 @@ run_tcp(uv_handle_t* handle){
                 return;
             }
             tcp->n_accept_requests--;
-            // take out  request from tcp object
+            // take out request from tcp object
         }
     }
 }

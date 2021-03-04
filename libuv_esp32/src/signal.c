@@ -57,7 +57,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
     gpio_isr_register(&signal_isr, &loop, ESP_INTR_FLAG_LEVEL5, NULL); // que prioridad pongo a las interrupciones?
 
     // Hay un fallo aqui
-    rv = insert_handle(loop, (uv_handle_t*)handle);
+    rv = insert((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
     if (rv != 0){
         ESP_LOGE("UV_SIGNAL_START", "Error when calling insert_handle from uv_signal_start");
         return 1;
@@ -71,7 +71,7 @@ uv_signal_stop(uv_signal_t* handle){
     loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
 
-    rv = remove_handle(loop, (uv_handle_t*)handle);
+    rv = remove((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
     if(rv != 0){
         ESP_LOGE("UV_SIGNAL_STOP", "Error when calling remove_handle in uv_signal_stop");
         return 1;

@@ -7,7 +7,7 @@
 
 int
 insert(void** pointer, int* active, size_t size, void* handle){
-    int i = *active + 1; // array index
+    int i = *active++; // array index
 
     if(i == 1){
         pointer = malloc(size);

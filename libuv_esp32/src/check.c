@@ -38,7 +38,7 @@ uv_check_start(uv_check_t* handle, uv_check_cb cb){
     // If not, add it to active handlers
     handle->cb = cb;
 
-    rv = insert_handle(loop, (uv_handle_t*)handle);
+    rv = insert((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
     if(rv != 0){
         printf("Error durante insert handle en check start\n");
         return 1;
@@ -53,7 +53,7 @@ uv_check_stop(uv_check_t* handle){
     loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
 
-    rv = remove_handle(loop, (uv_handle_t*)handle);
+    rv = remove((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
     if(rv != 0){
         printf("Error durante remove handle en check stop\n");
         return 1;

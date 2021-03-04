@@ -41,7 +41,7 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
     handle->timeout = clamped_timeout;
     handle->repeat = (uint32_t)repeat;
 
-    rv = insert_handle(loop, (uv_handle_t*)handle);
+    rv = insert((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
     if(rv != 0){
         ESP_LOGE("UV_TIMER_START", "Error when calling insert_handle in uv_timer_start");
         return 1;
@@ -58,7 +58,7 @@ uv_timer_stop(uv_timer_t* handle){
     loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
 
-    rv = remove_handle(loop, (uv_handle_t*)handle);
+    rv = remove((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
     if(rv != 0){
         ESP_LOGE("UV_TIMER_STOP", "Error when calling remove_handles in uv_timer_stop");
         return 1;

@@ -1,10 +1,17 @@
 #include "uv.h"
 
+// virtual table for listen requests
+static request_vtbl_t listen_req_vtbl = {
+    .run = run_listen_req
+};
+
 int
 uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
     // This function should only safe information given through the arguments
     // backlog indicates number of connection to be queued (only backlog = 1 is used in raft)
     uv_tcp_t* tcp = (uv_tcp_t*)stream;
+    int rv;
+
     tcp->connection_cb = cb;
 
     uv_listen_t* req = malloc(sizeof(uv_listen_t));
@@ -13,16 +20,25 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
         return 1;
     }
 
+    req->req.loop = tcp->self.loop;
+    req->req.vtbl = &listen_req_vtbl;
     req->cb = cb;
     req->stream = stream;
+    req->status = 0;
 
-    tcp->n_listen_requests++;
-    tcp->listen_requests = realloc(tcp->listen_requests, tcp->n_listen_requests * sizeof(uv_listen_t*));
-    if(!tcp->listen_requests){
-        printf("UV_LISTEN", "Error during realloc in uv_listen");
+    // tcp->n_listen_requests++;
+    // tcp->listen_requests = realloc(tcp->listen_requests, tcp->n_listen_requests * sizeof(uv_listen_t*));
+    // if(!tcp->listen_requests){
+    //     printf("UV_LISTEN", "Error during realloc in uv_listen");
+    //     return 1;
+    // }
+    // memcpy(&(tcp->listen_requests[tcp->n_listen_requests-1]), &req, sizeof(uv_listen_t*));
+
+    rv = insert((void**)tcp->listen_requests,&(tcp->n_listen_requests),sizeof(uv_request_t*), req);
+    if(rv != 0){
+        ESP_LOGE("UV_LISTEN","Error during insert in uv_listen");
         return 1;
     }
-    memcpy(&(tcp->listen_requests[tcp->n_listen_requests-1]), &req, sizeof(uv_listen_t*));
         
     return 0;
 }

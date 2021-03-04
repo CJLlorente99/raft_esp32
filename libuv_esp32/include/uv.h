@@ -108,12 +108,14 @@ struct uv_connect_s {
     uv_request_t req;
     struct sockaddr* dest_sockaddr;
     uv_connect_cb cb;
+    int status;
 };
 
 struct uv_listen_s {
     uv_request_t req;
     uv_stream_t* stream;
     uv_connection_cb cb;
+    int status;
 };
 
 struct uv_accept_s {
@@ -241,9 +243,11 @@ int uv_loop_close (uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
 
 // Core function prototypes
-int remove_handle(loopFSM_t* loop, uv_handle_t* handle);
-int insert_handle(loopFSM_t* loop, uv_handle_t* handle);
-int remove_request(loopFSM_t* loop, uv_request_t* req);
-int insert_request(loopFSM_t* loop, uv_request_t* req);
+int insert(void** pointer, int* active, size_t size, void* handle);
+int remove(void** pointer, int* active, size_t size, void* handle);
+
+// Request run implementations prototypes
+void run_connect_req(uv_request_t* req);
+void run_listen_req(uv_request_t* req);
 
 #endif /* UV_H */
