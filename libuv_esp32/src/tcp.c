@@ -80,11 +80,12 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     // this function connects the socket in handle to addr in sockeaddr
     // once connection is completed callback is triggered (added to the correspondant state in loop FSM to be executed once)
     // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
+    int rv;
+
+    req->req.loop = handle->self.loop;
     req->cb = cb;
     req->dest_sockaddr = addr;
 
-    // Add request to the list of connect requests
-    // TODO -> apply object approach so all request share a single list of requests
     handle->n_connect_requests++;
     handle->connect_requests = realloc(handle->connect_requests, handle->n_connect_requests * sizeof(uv_connect_t*));
     if(!handle->connect_requests){
@@ -92,6 +93,12 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
         return 1;
     }
     memcpy(&(handle->connect_requests[handle->n_connect_requests-1]), &req, sizeof(uv_connect_t*));
+
+    /* Add request to the request list */
+    rv = insert_request(req, handle->self.loop);
+    if(rv != 0){
+        ESP_LOGE("UV_TCP_CONNECT", "Error during insert_request in uv_tcp_connect");
+    }
 
     return 0;
 }

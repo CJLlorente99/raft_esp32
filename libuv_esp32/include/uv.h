@@ -24,6 +24,7 @@
 /// Declaration
 
 typedef struct handle_vtbl_s handle_vtbl_t;
+typedef struct request_vtbl_s request_vtbl_t;
 
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
@@ -41,8 +42,7 @@ typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_file_s uv_file;
 typedef struct uv_dirent_s uv_dirent_t;
-
-typedef struct signal_cb_param_s signal_cb_param_t;
+typedef struct uv_request_s uv_request_t;
 
 typedef struct loopFSM_s loopFSM_t;
 
@@ -83,29 +83,48 @@ struct handle_vtbl_s {
 // polymorphic method
 void handle_run(uv_handle_t* handle);
 
+// request "class"
+struct uv_request_s {
+    request_vtbl_t* vtbl;
+    uv_loop_t* loop;
+};
+
+// virtual table for every request
+struct request_vtbl_s {
+    void (*run)(uv_request_t* handle);
+};
+
+// polymorphic method
+void request_run(uv_request_t* handle);
+
 /// Types definition
 
 struct uv_write_s {
+    uv_request_t req;
     // request
 };
 
 struct uv_connect_s {
+    uv_request_t req;
     struct sockaddr* dest_sockaddr;
     uv_connect_cb cb;
 };
 
 struct uv_listen_s {
+    uv_request_t req;
     uv_stream_t* stream;
     uv_connection_cb cb;
 };
 
 struct uv_accept_s {
+    uv_request_t req;
     uv_stream_t* server;
     uv_stream_t* client;
 };
 
 
 struct uv_fs_s {
+    uv_request_t req;
     // request
 };
 
@@ -186,6 +205,10 @@ struct loopFSM_s
     uv_handle_t** active_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
     int n_active_handlers; // number of signal handlers
     int n_handlers_run; // number of signal handlers that have been run
+
+    uv_request_t** active_requests;
+    int n_active_requests;
+    int all_requests_run : 1;
 };
 
 // Some function prototypes
@@ -220,5 +243,7 @@ int uv_run (uv_loop_t* loop);
 // Core function prototypes
 int remove_handle(loopFSM_t* loop, uv_handle_t* handle);
 int insert_handle(loopFSM_t* loop, uv_handle_t* handle);
+int remove_request(loopFSM_t* loop, uv_request_t* req);
+int insert_request(loopFSM_t* loop, uv_request_t* req);
 
 #endif /* UV_H */
