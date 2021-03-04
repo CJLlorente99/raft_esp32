@@ -1,5 +1,7 @@
 #include "uv.h"
 
+// Seguramente uv_file debe de convertirse en un FIL
+
 int
 uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb){
     // f_close()
@@ -8,7 +10,16 @@ uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb){
 
 int
 uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb){
-    // f_open()
+    // TODO
+    // search for flags meaning and importance
+    FIL* fp;
+    FRESULT rv;
+    rv = f_open(fp, path, mode);
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open. Code = %d", rv);
+        return 1;
+    }
+    // add request to be called in following state (run_requests)
     return 0;
 }
 
