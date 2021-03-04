@@ -2,53 +2,56 @@
 
 #define LED_DEBUG_PORT 5
 
+// TODO
+// Creo que esto no esta bien. Debería ser void*** pointer?
+
 int
-insert_handle(loopFSM_t* loop, uv_handle_t* handle){
-    int i = loop->n_active_handlers + 1; // array index
+insert(void** pointer, int* active, size_t size, void* handle){
+    int i = *active + 1; // array index
 
     if(i == 1){
-        loop->active_handlers = malloc(sizeof(uv_handle_t*));
-        if(!loop->active_handlers){
-            ESP_LOGE("INSERT_HANDLE", "Error loop->active_handlers is NULL after malloc in insert_handle");
+        pointer = malloc(size);
+        if(!pointer){
+            ESP_LOGE("INSERT_HANDLE", "Error pointer is NULL after malloc in insert_handle");
             return 1;
         }
             
-        memcpy(loop->active_handlers, &handle, sizeof(uv_handle_t*));
+        memcpy(pointer, &handle, size);
     } else{
-        loop->active_handlers = realloc(loop->active_handlers, i * sizeof(uv_handle_t*));
-        if(!loop->active_handlers){
-            ESP_LOGE("INSERT_HANDLE", "Error loop->active_handlers is NULL after malloc in insert_handle");
+        pointer = realloc(pointer, i * size);
+        if(!pointer){
+            ESP_LOGE("INSERT_HANDLE", "Error pointer is NULL after malloc in insert_handle");
             return 1;
         }
-        memcpy(&(loop->active_handlers[i-1]), &handle, sizeof(uv_handle_t*));
+        memcpy(&(pointer[i-1]), &handle, size);
     }
 
-    loop->n_active_handlers = i;
+    *active = i;
 
     return 0;
 }
 
 int
-remove_handle(loopFSM_t* loop, uv_handle_t* handle){
+remove(void** pointer, int* active, size_t size, void* handle){
     // Allocate memory for new array of handlers
-    int new_n_active_handlers = loop->n_active_handlers - 1;
-    uv_handle_t** new_handlers = malloc(new_n_active_handlers * sizeof(uv_handle_t*));
+    int new_n_active = *active - 1;
+    void** new_pointer = malloc(new_n_active * size);
 
-    if(!new_handlers){
-        ESP_LOGE("REMOVE_HANDLE", "Error new_handlers is NULL after malloc in remove_handles");
+    if(!new_pointer){
+        ESP_LOGE("REMOVE_HANDLE", "Error new_pointer is NULL after malloc in remove_handles");
         return 1;
     }
 
     // Add handlers, except from the one stopped
     int j = 0;
-    for(int i = 0; i < loop->n_active_handlers; i++){
-        if(loop->active_handlers[i] != handle){
-            memcpy(&(new_handlers[j++]), &(loop->active_handlers[i]), sizeof(uv_handle_t*));
+    for(int i = 0; i < *active; i++){
+        if(pointer[i] != handle){
+            memcpy(&(new_pointer[j++]), &(pointer[i]), size);
         }
     }
 
-    loop->n_active_handlers = new_n_active_handlers;
-    loop->active_handlers = new_handlers;
+    *active = new_n_active;
+    pointer = new_pointer;
 
     return 0;
 }
