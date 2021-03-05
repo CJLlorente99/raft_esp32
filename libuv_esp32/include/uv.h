@@ -160,6 +160,9 @@ struct uv_tcp_s {
     uv_write_cb write_cb;
     int socket;
     struct sockaddr* src_sockaddr;
+    fd_set* readset;
+    fd_set* writeset;
+    fd_set* errorset;
     
     int bind : 1;
 

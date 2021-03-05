@@ -43,6 +43,9 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     tcp->close_cb = NULL;
     tcp->connection_cb = NULL;
     tcp->read_cb = NULL;
+    FD_ZERO(tcp->readset);
+    FD_ZERO(tcp->writeset);
+    FD_ZERO(tcp->errorset);
 
     tcp->n_connect_requests = 0;
     tcp->connect_requests = NULL;
@@ -55,6 +58,9 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     }
 
     tcp->socket = tcp_socket;
+    FD_SET(tcp_socket, tcp->readset);
+    FD_SET(tcp_socket, tcp->writeset);
+    FD_SET(tcp_socket, tcp->errorset);
 
     // añadir a los handlers a los que se tiene que llamar desde el loop
     rv = insert((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)tcp);
@@ -139,7 +145,6 @@ run_tcp(uv_handle_t* handle){
                 ESP_LOGE("RUN_TCP", "Error during connect in run tcp");
                 return;
             }
-            tcp->n_connect_requests--;
             // add request to be called in following state (run_requests)
             // take out request from tcp object
             rv = insert((void**)loop->active_requests,&(loop->n_active_requests), sizeof(uv_request_t*), (void*)tcp->connect_requests[i]);
@@ -162,7 +167,6 @@ run_tcp(uv_handle_t* handle){
                 ESP_LOGE("RUN_TCP", "Error durign listen in run tcp");
                 return;
             }
-            tcp->n_listen_requests--;
             // add request to be called in following state (run_requests)
             // take out  request from tcp object
             rv = insert((void**)loop->active_requests,&(loop->n_active_requests), sizeof(uv_request_t*), (void*)tcp->listen_requests[i]);
@@ -174,19 +178,31 @@ run_tcp(uv_handle_t* handle){
             if(rv != 0){
                 ESP_LOGE("RUN_TCP", "Error during remove in run_tcp");
                 return;
+            }
         }
     }
 
     // accept es bloqueante, ver el fd y ver si hay algo que leer
     if(tcp->n_accept_requests > 0){ 
-        for(int i = 0; i < tcp->n_listen_requests; i++){
-            rv = accept(tcp->socket, tcp->accept_requests[i]->client->src_sockaddr, sizeof(struct sockaddr));
-            if(rv != 0){
-                ESP_LOGE("RUN_TCP", "Error during accept in run tcp\n");
-                return;
+        if(select(tcp->socket, tcp->readset, NULL, NULL, NULL)){
+            for(int i = 0; i < tcp->n_accept_requests; i++){
+                rv = accept(tcp->socket, tcp->accept_requests[i]->client->src_sockaddr, sizeof(struct sockaddr));
+                if(rv != 0){
+                    ESP_LOGE("RUN_TCP", "Error during accept in run tcp\n");
+                    return;
+                }
+                // take out request from tcp object
+                rv = insert((void**)loop->active_requests,&(loop->n_active_requests), sizeof(uv_request_t*), (void*)tcp->accept_requests[i]);
+                if(rv != 0){
+                    ESP_LOGE("RUN_TCP", "Error during insert in run_tcp");
+                    return;
+                }
+                rv = remove((void**)tcp->accept_requests,&(tcp->n_accept_requests), sizeof(uv_request_t*), (void*)tcp->accept_requests[i]);
+                if(rv != 0){
+                    ESP_LOGE("RUN_TCP", "Error during remove in run_tcp");
+                    return;
+                }
             }
-            tcp->n_accept_requests--;
-            // take out request from tcp object
         }
     }
 }

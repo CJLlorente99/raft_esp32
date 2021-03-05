@@ -46,6 +46,7 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
 int
 uv_accept(uv_stream_t* server, uv_stream_t* client){
     uv_tcp_t* tcp = (uv_tcp_t*)server;
+    int rv;
     
     uv_accept_t* req = malloc(sizeof(uv_accept_t));
     if(!req){
@@ -56,13 +57,11 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
     req->server = server;
     req->client = client;
 
-    tcp->n_accept_requests++;
-    tcp->accept_requests = realloc(tcp->accept_requests, tcp->n_accept_requests * sizeof(uv_accept_t*));
-    if(!tcp->accept_requests){
-        ESP_LOGE("UV_ACCEPT", "Error during realloc in uv_accept");
+    rv = insert((void**)tcp->accept_requests,&(tcp->n_accept_requests),sizeof(uv_request_t*), req);
+    if(rv != 0){
+        ESP_LOGE("UV_ACCEPT","Error during insert in uv_accept");
         return 1;
     }
-    memcpy(&(tcp->accept_requests[tcp->n_accept_requests-1]), &req, sizeof(uv_listen_t*));
 
     return 0;
 }
