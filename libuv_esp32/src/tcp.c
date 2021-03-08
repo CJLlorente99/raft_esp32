@@ -139,6 +139,7 @@ run_tcp(uv_handle_t* handle){
     if(tcp->n_connect_requests > 0){ // connect es bloqueante?
         for(int i = 0; i < tcp->n_connect_requests; i++){
             rv = connect(tcp->socket, tcp->connect_requests[i]->dest_sockaddr, sizeof(struct sockaddr));
+            tcp->connect_requests[i]->status = rv;
             if(rv != 0){
                 // TODO
                 // No siempre que sea = -1 es error. Usar errno.h para saber que tipo de error ha sido y si debe volver a intentarse
@@ -163,6 +164,7 @@ run_tcp(uv_handle_t* handle){
     if(tcp->n_listen_requests > 0){
         for(int i = 0; i < tcp->n_listen_requests; i++){
             rv = listen(tcp->socket, 1);
+            tcp->listen_requests[i]->status = rv;
             if(rv != 0){
                 ESP_LOGE("RUN_TCP", "Error durign listen in run tcp");
                 return;
@@ -184,8 +186,8 @@ run_tcp(uv_handle_t* handle){
 
     // accept es bloqueante, ver el fd y ver si hay algo que leer
     if(tcp->n_accept_requests > 0){ 
-        if(select(tcp->socket, tcp->readset, NULL, NULL, NULL)){
-            for(int i = 0; i < tcp->n_accept_requests; i++){
+        for(int i = 0; i < tcp->n_accept_requests; i++){
+            if(select(tcp->socket, tcp->readset, NULL, NULL, NULL)){
                 rv = accept(tcp->socket, tcp->accept_requests[i]->client->src_sockaddr, sizeof(struct sockaddr));
                 if(rv != 0){
                     ESP_LOGE("RUN_TCP", "Error during accept in run tcp\n");
@@ -205,4 +207,64 @@ run_tcp(uv_handle_t* handle){
             }
         }
     }
+
+    // not sure this functionality is what it actually should be
+    // I think read should be called until buffer is full
+    if(tcp->n_read_start_requests > 0){ 
+        for(int i = 0; i < tcp->n_read_start_requests; i++){
+            if(select(tcp->socket, tcp->readset, NULL, NULL, NULL) && tcp->read_start_requests[i]->is_alloc){
+                ssize_t nread = read(tcp->socket, tcp->read_start_requests[i]->buf->base, tcp->read_start_requests[i]->buf->len);
+                if(nread < 0){
+                    ESP_LOGE("RUN_TCP", "Error during read in run_tcp");
+                }
+            }
+            rv = insert((void**)loop->active_requests,&(loop->n_active_requests), sizeof(uv_request_t*), (void*)tcp->read_start_requests[i]);
+                if(rv != 0){
+                    ESP_LOGE("RUN_TCP", "Error during insert in run_tcp");
+                    return;
+                }
+            // DO NOT remove the read start request (uv_read_stop is the one doing that)
+        }
+    }
+
+    if(tcp->n_read_stop_requests > 0){
+        for(int i = 0; i < tcp->n_read_stop_requests; i++){
+            rv = remove((void**)tcp->read_start_requests,&(tcp->n_read_start_requests), sizeof(uv_request_t*), (void*)tcp->read_start_requests[i]);
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP", "Error during remove in run_tcp");
+                return;
+            }
+            rv = remove((void**)tcp->read_stop_requests,&(tcp->n_read_stop_requests), sizeof(uv_request_t*), (void*)tcp->read_stop_requests[i]);
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP", "Error during remove in run_tcp");
+                return;
+            }
+        }
+    }
+
+    if(tcp->n_write_requests > 0){ 
+        for(int i = 0; i < tcp->n_write_requests; i++){
+            if(select(tcp->socket, NULL, tcp->writeset, NULL, NULL)){
+                rv = write(tcp->socket, tcp->write_requests[i]->bufs, tcp->write_requests[i]->nbufs * sizeof(tcp->write_requests[i]->bufs[0]));
+                tcp->write_requests[i]->status = rv;
+                if(rv < 0){
+                    ESP_LOGE("RUN_TCP", "Error during write in run_tcp");
+                    return;
+                }
+
+                rv = insert((void**)loop->active_requests,&(loop->n_active_requests), sizeof(uv_request_t*), (void*)tcp->read_start_requests[i]);
+                if(rv != 0){
+                    ESP_LOGE("RUN_TCP", "Error during insert in run_tcp");
+                    return;
+                }
+
+                rv = remove((void**)tcp->write_requests,&(tcp->n_write_requests), sizeof(uv_request_t*), (void*)tcp->write_requests[i]);
+                if(rv != 0){
+                    ESP_LOGE("RUN_TCP", "Error during remove in run_tcp");
+                    return;
+                }
+            }
+        }
+    }
+
 }

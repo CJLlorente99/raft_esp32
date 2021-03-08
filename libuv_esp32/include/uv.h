@@ -38,6 +38,8 @@ typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
 typedef struct uv_listen_s uv_listen_t;
 typedef struct uv_accept_s uv_accept_t;
+typedef struct uv_read_start_s uv_read_start_t;
+typedef struct uv_read_stop_s uv_read_stop_t;
 typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_file_s uv_file;
@@ -101,7 +103,10 @@ void request_run(uv_request_t* handle);
 
 struct uv_write_s {
     uv_request_t req;
-    // request
+    uv_write_cb cb;
+    int status;
+    uv_buf_t* bufs;
+    int nbufs;
 };
 
 struct uv_connect_s {
@@ -124,6 +129,19 @@ struct uv_accept_s {
     uv_stream_t* client;
 };
 
+struct uv_read_start_s {
+    uv_request_t req;
+    uv_stream_t* stream;
+    uv_alloc_cb alloc_cb;
+    uv_read_cb read_cb;
+    uv_buf_t* buf;
+    ssize_t nread;
+    int is_alloc : 1;
+};
+
+struct uv_read_stop_s {
+    uv_request_t req;
+};
 
 struct uv_fs_s {
     uv_request_t req;
@@ -174,6 +192,15 @@ struct uv_tcp_s {
 
     uv_listen_t** listen_requests;
     int n_listen_requests;
+
+    uv_read_start_t** read_start_requests;
+    int n_read_start_requests;
+
+    uv_read_stop_t** read_stop_requests;
+    int n_read_stop_requests;
+
+    uv_write_t** write_requests;
+    int n_write_requests;
 };
 
 struct uv_buf_s {
@@ -252,5 +279,9 @@ int remove(void** pointer, int* active, size_t size, void* handle);
 // Request run implementations prototypes
 void run_connect_req(uv_request_t* req);
 void run_listen_req(uv_request_t* req);
+void run_accept_req(uv_request_t* req);
+void run_read_start_req(uv_request_t* req);
+void run_read_stop_req(uv_request_t* req);
+void run_write_req(uv_request_t* req);
 
 #endif /* UV_H */
