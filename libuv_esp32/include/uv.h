@@ -21,6 +21,31 @@
 #define SIGNAL_TASK_PRIORITY 4
 #define LOOP_RATE_MS 100
 
+// fs flags
+
+#define UV_FS_O_APPEND FA_OPEN_APPEND
+#define UV_FS_O_CREAT   FA_OPEN_ALWAYS
+#define UV_FS_O_DIRECT  0
+#define UV_FS_O_DIRECTORY   0
+#define UV_FS_O_DSYNC   0
+#define UV_FS_O_EXCL    FA_CREATE_NEW // it does not exactly mean this
+#define UV_FS_O_EXLOCK  0
+#define UV_FS_O_FILEMAP 0
+#define UV_FS_O_NOATIME 0
+#define UV_FS_O_NOCTYY  0
+#define UV_FS_O_NOFOLLOW    0
+#define UV_FS_O_NONBLOCK    0
+#define UV_FS_O_RANDOM  0
+#define UV_FS_O_RDONLY  FA_READ
+#define UV_FS_O_RDWR    FA_WRITE | FA_READ
+#define UV_FS_O_SEQUENTIAL  0
+#define UV_FS_O_SHORT_LIVED 0
+#define UV_FS_O_SYMLINK 0
+#define UV_FS_O_SYNC    0
+#define UV_FS_O_TEMPORARY   0
+#define UV_FS_O_TRUNC   FA_CREATE_ALWAYS
+#define UV_FS_O_WRONLY  FA_WRITE
+
 /// Declaration
 
 typedef struct handle_vtbl_s handle_vtbl_t;
@@ -283,5 +308,6 @@ void run_accept_req(uv_request_t* req);
 void run_read_start_req(uv_request_t* req);
 void run_read_stop_req(uv_request_t* req);
 void run_write_req(uv_request_t* req);
+void run_fs_req(uv_request_t* req);
 
 #endif /* UV_H */

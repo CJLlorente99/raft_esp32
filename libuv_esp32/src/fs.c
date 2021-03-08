@@ -1,5 +1,10 @@
 #include "uv.h"
 
+// virtual table for fs requests
+static request_vtbl_t fs_req_vtbl = {
+    .run = run_fs_req
+};
+
 // Seguramente uv_file debe de convertirse en un FIL
 
 int
@@ -11,15 +16,30 @@ uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb){
 int
 uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb){
     // TODO
-    // search for flags meaning and importance
+    // flags indicate mode
+    // mode is always 0
     FIL* fp;
     FRESULT rv;
-    rv = f_open(fp, path, mode);
+    int rv2;
+
+    loopFSM_t* loopFSM = loop->loopFSM->user_data;
+
+    uv_fs_t* req = malloc(sizeof(uv_fs_t));
+    req->req.loop = loop;
+    req->req.vtbl = &run_fs_req;
+
+    rv = f_open(fp, path, flags);
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open. Code = %d", rv);
         return 1;
     }
-    // add request to be called in following state (run_requests)
+
+    rv2 = insert((void**)loopFSM->active_requests, loopFSM->n_active_requests, sizeof(uv_request_t*),req);
+    if(rv != 0){
+        ESP_LOGE("UV_FS_OPEN", "Error during insert in uv_fs_open");
+        return 1;
+    }    
+
     return 0;
 }
 
