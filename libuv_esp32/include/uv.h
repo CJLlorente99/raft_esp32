@@ -67,9 +67,10 @@ typedef struct uv_read_start_s uv_read_start_t;
 typedef struct uv_read_stop_s uv_read_stop_t;
 typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_fs_s uv_fs_t;
-typedef struct uv_file_s uv_file;
+typedef FIL uv_file;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_request_s uv_request_t;
+typedef struct uv_stat_s uv_stat_t;
 
 typedef struct loopFSM_s loopFSM_t;
 
@@ -170,16 +171,17 @@ struct uv_read_stop_s {
 
 struct uv_fs_s {
     uv_request_t req;
-    // request
-};
-
-struct uv_file_s {
-    // representation of a file
+    uv_fs_cb cb;
+    uv_stat_t statbuf;
 };
 
 struct uv_dirent_s {
 
 };
+
+struct uv_stat_s {
+    uint64_t st_size;
+}
 
 struct uv_poll_s {
     uv_handle_t* self;
