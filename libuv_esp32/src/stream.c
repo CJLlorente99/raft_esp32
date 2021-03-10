@@ -34,9 +34,9 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
     // }
     // memcpy(&(tcp->listen_requests[tcp->n_listen_requests-1]), &req, sizeof(uv_listen_t*));
 
-    rv = insert((void**)tcp->listen_requests,&(tcp->n_listen_requests),sizeof(uv_request_t*), req);
+    rv = uv_insert((void***)&(tcp->listen_requests),&(tcp->n_listen_requests),sizeof(uv_request_t*), req);
     if(rv != 0){
-        ESP_LOGE("UV_LISTEN","Error during insert in uv_listen");
+        ESP_LOGE("UV_LISTEN","Error during uv_insert in uv_listen");
         return 1;
     }
         
@@ -64,9 +64,9 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
     req->server = server;
     req->client = client;
 
-    rv = insert((void**)tcp->accept_requests,&(tcp->n_accept_requests),sizeof(uv_request_t*), req);
+    rv = uv_insert((void***)&(tcp->accept_requests),&(tcp->n_accept_requests),sizeof(uv_request_t*), req);
     if(rv != 0){
-        ESP_LOGE("UV_ACCEPT","Error during insert in uv_accept");
+        ESP_LOGE("UV_ACCEPT","Error during uv_insert in uv_accept");
         return 1;
     }
 
@@ -99,9 +99,9 @@ uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
     req->nread = 0;
     req->is_alloc = 0;
 
-    rv = insert((void**)stream->read_start_requests, &(stream->n_read_start_requests), sizeof(uv_request_t*), req);
+    rv = uv_insert((void***)&(stream->read_start_requests), &(stream->n_read_start_requests), sizeof(uv_request_t*), req);
     if(rv != 0){
-        ESP_LOGE("UV_READ_START","Error during insert in uv_read_start");
+        ESP_LOGE("UV_READ_START","Error during uv_insert in uv_read_start");
         return 1;
     }
 
@@ -126,9 +126,9 @@ uv_read_stop(uv_stream_t* stream){
     req->req.loop = stream->self.loop;
     req->req.vtbl = &read_stop_req_vtbl;
 
-    rv = insert((void**)stream->read_start_requests, &(stream->n_read_start_requests), sizeof(uv_request_t*), req);
+    rv = uv_insert((void***)&(stream->read_start_requests), &(stream->n_read_start_requests), sizeof(uv_request_t*), req);
     if(rv != 0){
-        ESP_LOGE("UV_READ_START","Error during insert in uv_read_start");
+        ESP_LOGE("UV_READ_START","Error during uv_insert in uv_read_start");
         return 1;
     }
 
@@ -144,6 +144,8 @@ int
 uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb){
     int rv;
     uv_tcp_t* tcp = (uv_tcp_t*) handle;
+    uv_buf_t* const_buf = malloc(nbufs * sizeof(bufs[0])); 
+    memcpy(const_buf, bufs, nbufs * sizeof(bufs[0]));
 
     tcp->write_cb = cb;
 
@@ -151,12 +153,12 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     req->req.loop = handle->self.loop;
     req->req.vtbl = &write_req_vtbl;
     req->status = 0;
-    req->bufs = bufs;
+    req->bufs = const_buf;
     req->nbufs = nbufs;
 
-    rv = insert((void**)tcp->write_requests, &(tcp->n_write_requests), sizeof(uv_request_t*), req);
+    rv = uv_insert((void***)&(tcp->write_requests), &(tcp->n_write_requests), sizeof(uv_request_t*), req);
     if(rv != 0){
-        ESP_LOGE("UV_WRITE","Error during insert in uv_write");
+        ESP_LOGE("UV_WRITE","Error during uv_insert in uv_write");
         return 1;
     }
 

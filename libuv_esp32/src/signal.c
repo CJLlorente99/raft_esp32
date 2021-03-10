@@ -41,6 +41,7 @@ int
 uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
     loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv = 0;
+    esp_err_t err;
     // TODO
     // comprobar si tiene el mismo signum. Si lo tienen, encontrar el handle y cambiar el signal_cb
 
@@ -53,13 +54,21 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 
     ESP_LOGI("UV_SIGNAL_START", "Setting interrupt for signum %d\n", signum);
 
-    gpio_set_intr_type(signum, GPIO_INTR_POSEDGE);
-    gpio_isr_register(&signal_isr, &loop, ESP_INTR_FLAG_LEVEL5, NULL); // que prioridad pongo a las interrupciones?
+    err = gpio_set_intr_type(signum, GPIO_INTR_POSEDGE); // can also be done through gpio_config
+    if(err != 0){
+        ESP_LOGE("UV_SIGNAL_START", "Error during gpio_set_intr_type in uv_signal_start: err %d", err);
+        return 0;
+    }
+    
+    err = gpio_isr_register(&signal_isr, loop, ESP_INTR_FLAG_LEVEL5, NULL); // que prioridad pongo a las interrupciones?
+    if(err != 0){
+        ESP_LOGE("UV_SIGNAL_START", "Error during gpio_isr_register in uv_signal_start: err %d", err);
+        return 0;
+    }
 
-    // Hay un fallo aqui
-    rv = insert((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
+    rv = uv_insert((void***)&(loop->active_handlers), &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
     if (rv != 0){
-        ESP_LOGE("UV_SIGNAL_START", "Error when calling insert_handle from uv_signal_start");
+        ESP_LOGE("UV_SIGNAL_START", "Error when calling uv_insert_handle from uv_signal_start");
         return 1;
     }
     
@@ -71,9 +80,9 @@ uv_signal_stop(uv_signal_t* handle){
     loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
 
-    rv = remove((void**)loop->active_handlers, &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
+    rv = uv_remove((void***)&(loop->active_handlers), &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
     if(rv != 0){
-        ESP_LOGE("UV_SIGNAL_STOP", "Error when calling remove_handle in uv_signal_stop");
+        ESP_LOGE("UV_SIGNAL_STOP", "Error when calling uv_remove_handle in uv_signal_stop");
         return 1;
     }
 

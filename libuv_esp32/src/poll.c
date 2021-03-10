@@ -17,10 +17,14 @@ uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd){
 int
 uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb){
     loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
+    int rv;
     
     handle->cb = cb;
 
-    insert_handle(loop, (uv_handle_t*)handle);
+    rv = uv_insert((void***)&(loop->active_handlers), &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
+    if(rv != 0){
+        ESP_LOGE("UV_POLL_START", "Error during uv_insert in uv_poll_start");
+    }
 
     return 0;
 }
@@ -28,9 +32,12 @@ uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb){
 int
 uv_poll_stop(uv_poll_t* poll){
     loopFSM_t* loop = poll->self->loop->loopFSM->user_data;
+    int rv;
 
-    remove_handle(loop, (uv_handle_t*)poll);
-
+    rv = uv_remove((void***)&(loop->active_handlers), &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)poll);
+    if(rv != 0){
+        ESP_LOGE("UV_POLL_STOP", "Error during uv_remove in uv_poll_stop");
+    }
     return 0;
 }
 

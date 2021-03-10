@@ -13,6 +13,7 @@
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "lwip/sockets.h"
+#include "lwip/err.h"
 #include "ff.h"
 #include "esp_log.h"
 
@@ -169,19 +170,19 @@ struct uv_read_stop_s {
     uv_request_t req;
 };
 
-struct uv_fs_s {
-    uv_request_t req;
-    uv_fs_cb cb;
-    uv_stat_t statbuf;
-};
-
 struct uv_dirent_s {
 
 };
 
 struct uv_stat_s {
     uint64_t st_size;
-}
+};
+
+struct uv_fs_s {
+    uv_request_t req;
+    uv_fs_cb cb;
+    uv_stat_t statbuf;
+};
 
 struct uv_poll_s {
     uv_handle_t* self;
@@ -300,8 +301,8 @@ int uv_loop_close (uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
 
 // Core function prototypes
-int insert(void** pointer, int* active, size_t size, void* handle);
-int remove(void** pointer, int* active, size_t size, void* handle);
+int uv_insert(void*** pointer, int* active, size_t size, void* handle);
+int uv_remove(void*** pointer, int* active, size_t size, void* handle);
 
 // Request run implementations prototypes
 void run_connect_req(uv_request_t* req);
