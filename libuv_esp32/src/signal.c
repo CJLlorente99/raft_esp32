@@ -60,13 +60,13 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
         return 0;
     }
     
-    err = gpio_isr_register(&signal_isr, loop, ESP_INTR_FLAG_LEVEL5, NULL); // que prioridad pongo a las interrupciones?
+    err = gpio_isr_register(signal_isr, loop, ESP_INTR_FLAG_LEVEL5, NULL); // que prioridad pongo a las interrupciones?
     if(err != 0){
         ESP_LOGE("UV_SIGNAL_START", "Error during gpio_isr_register in uv_signal_start: err %d", err);
         return 0;
     }
 
-    rv = uv_insert((void***)&(loop->active_handlers), &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
+    rv = uv_insert_handle(loop, (uv_handle_t*)handle);
     if (rv != 0){
         ESP_LOGE("UV_SIGNAL_START", "Error when calling uv_insert_handle from uv_signal_start");
         return 1;
@@ -80,7 +80,7 @@ uv_signal_stop(uv_signal_t* handle){
     loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
 
-    rv = uv_remove((void***)&(loop->active_handlers), &(loop->n_active_handlers), sizeof(uv_handle_t*), (void*)handle);
+    rv = uv_remove_handle(loop, (uv_handle_t*)handle);
     if(rv != 0){
         ESP_LOGE("UV_SIGNAL_STOP", "Error when calling uv_remove_handle in uv_signal_stop");
         return 1;

@@ -107,20 +107,23 @@ main_signal(void* ignore){
 void
 half_sec_callback_on (uv_timer_t* handle){
     gpio_set_level(LED_HALF_SEC_PORT,1);
+    ESP_LOGI("LED", "LED ENCENDIDA");
 }
 
 void
 half_sec_callback_off (uv_timer_t* handle){
     gpio_set_level(LED_HALF_SEC_PORT,0);
+    ESP_LOGI("LED", "LED APAGADA");
 }
 
 void
-main_timer(void* ignore){   
+main_timer(void* ignore){ 
+
     // Configure GPIO
     gpio_config_t io_conf;
 
     io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
-    io_conf.pin_bit_mask = ((1ULL<<LED_HALF_SEC_PORT)|(1ULL<<LED_DEBUG_PORT));
+    io_conf.pin_bit_mask = (1ULL<<LED_HALF_SEC_PORT);
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
@@ -153,16 +156,16 @@ main_timer(void* ignore){
         ESP_LOGE("TIMER_INIT", "Error in second uv_timer_init in main_timer");
     }
 
-    ESP_LOGI("TIMER_INIT", "SSecond uv_timer_init success");
+    ESP_LOGI("TIMER_INIT", "Second uv_timer_init success");
 
-    rv = uv_timer_start(timer_half_sec_on, half_sec_callback_on, 500, 1000);
+    rv = uv_timer_start(timer_half_sec_on, half_sec_callback_on, 0, 2000);
     if(rv != 0){
         ESP_LOGE("TIMER_START", "Error in first uv_timer_start in main_timer");
     }
 
     ESP_LOGI("TIMER_START", "First uv_timer_start success");
 
-    rv = uv_timer_start(timer_half_sec_off, half_sec_callback_off, 1000, 1000);
+    rv = uv_timer_start(timer_half_sec_off, half_sec_callback_off, 1000, 2000);
     if(rv != 0){
         ESP_LOGE("TIMER_START", "Error in second uv_timer_start in main_timer");
     }
@@ -179,6 +182,7 @@ main_timer(void* ignore){
 
 void app_main(void)
 {
+    ESP_LOGI("APP_MAIN", "Beggining app_main");
     vTaskDelay(5000/portTICK_RATE_MS);
 
     // Init NVS
@@ -189,7 +193,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    wifi_init();
+    // wifi_init();
 
-    xTaskCreate(&main_timer, "startup", 2048, NULL, 5, NULL);
+    xTaskCreate(main_timer, "startup", 4096, NULL, 5, NULL);
 }

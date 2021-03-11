@@ -47,6 +47,17 @@
 #define UV_FS_O_TRUNC   FA_CREATE_ALWAYS
 #define UV_FS_O_WRONLY  FA_WRITE
 
+// Enums
+
+typedef enum{
+    CONNECT,
+    LISTEN,
+    ACCEPT,
+    READ_START,
+    READ_STOP,
+    WRITE
+}tcp_type;
+
 /// Declaration
 
 typedef struct handle_vtbl_s handle_vtbl_t;
@@ -212,22 +223,22 @@ struct uv_tcp_s {
     
     int bind : 1;
 
-    uv_connect_t** connect_requests;
+    uv_request_t** connect_requests;
     int n_connect_requests;
 
-    uv_accept_t** accept_requests;
+    uv_request_t** accept_requests;
     int n_accept_requests;
 
-    uv_listen_t** listen_requests;
+    uv_request_t** listen_requests;
     int n_listen_requests;
 
-    uv_read_start_t** read_start_requests;
+    uv_request_t** read_start_requests;
     int n_read_start_requests;
 
-    uv_read_stop_t** read_stop_requests;
+    uv_request_t** read_stop_requests;
     int n_read_stop_requests;
 
-    uv_write_t** write_requests;
+    uv_request_t** write_requests;
     int n_write_requests;
 };
 
@@ -301,8 +312,12 @@ int uv_loop_close (uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
 
 // Core function prototypes
-int uv_insert(void*** pointer, int* active, size_t size, void* handle);
-int uv_remove(void*** pointer, int* active, size_t size, void* handle);
+int uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle);
+int uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle);
+int uv_insert_request(loopFSM_t* loop, uv_request_t* req);
+int uv_remove_request(loopFSM_t* loop, uv_request_t* req);
+int uv_insert_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type);
+int uv_remove_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type);
 
 // Request run implementations prototypes
 void run_connect_req(uv_request_t* req);

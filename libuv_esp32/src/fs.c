@@ -30,7 +30,7 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
-        rv2 = uv_insert((void***)&(loopFSM->active_requests), &(loopFSM->n_active_requests), sizeof(uv_request_t *), req);
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_CLOSE", "Error during uv_insert in uv_fs_close");
@@ -65,7 +65,7 @@ FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int m
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
-        rv2 = uv_insert((void***)&(loopFSM->active_requests), &(loopFSM->n_active_requests), sizeof(uv_request_t *), req);
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_OPEN", "Error during uv_insert in uv_fs_open");
@@ -99,7 +99,7 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
-        rv2 = uv_insert((void***)&(loopFSM->active_requests), &(loopFSM->n_active_requests), sizeof(uv_request_t *), req);
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_OPEN", "Error during uv_insert in uv_fs_open");
@@ -164,7 +164,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
-        rv2 = uv_insert((void***)&(loopFSM->active_requests), &(loopFSM->n_active_requests), sizeof(uv_request_t *), req);
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_OPEN", "Error during uv_insert in uv_fs_open");
@@ -198,7 +198,7 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* ne
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
-        rv2 = uv_insert((void***)&(loopFSM->active_requests), &(loopFSM->n_active_requests), sizeof(uv_request_t *), req);
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_RENAME", "Error during uv_insert in uv_fs_rename");
@@ -228,7 +228,7 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
-        rv2 = uv_insert((void***)&(loopFSM->active_requests), &(loopFSM->n_active_requests), sizeof(uv_request_t *), req);
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_FSYNC", "Error during uv_insert in uv_fs_rename");
@@ -259,7 +259,7 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset,
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
-        rv2 = uv_insert((void***)&(loopFSM->active_requests), &(loopFSM->n_active_requests), sizeof(uv_request_t *), req);
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_FTRUNCATE", "Error during uv_insert in uv_fs_ftruncate");
@@ -304,7 +304,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
-        rv2 = uv_insert((void***)&(loopFSM->active_requests), &(loopFSM->n_active_requests), sizeof(uv_request_t *), req);
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_UNLINK", "Error during uv_insert in uv_fs_unlink");

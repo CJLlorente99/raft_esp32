@@ -10,7 +10,7 @@ run_connect_req(uv_request_t* req){
     connect_req->cb(connect_req, connect_req->status);
 
     /* Requests are only called once */
-    rv = uv_remove((void***)&(loop->active_requests),&(loop->n_active_requests), sizeof(uv_request_t*), (void*) req);
+    rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
         ESP_LOGE("RUN_CONNECT_REQ", "Error during uv_remove in run_connect_req");
         return;
@@ -25,7 +25,7 @@ run_listen_req(uv_request_t* req){
 
     listen_req->cb(listen_req->stream, listen_req->status);
 
-    rv = uv_remove((void***)&(loop->active_requests),&(loop->n_active_requests), sizeof(uv_request_t*), (void*) req);
+    rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
         ESP_LOGE("RUN_LISTEN_REQ", "Error during uv_remove in run_listen_req");
         return;
@@ -37,7 +37,7 @@ run_accept_req(uv_request_t* req){
     int rv;
     loopFSM_t* loop = req->loop->loopFSM->user_data;
 
-    rv = uv_remove((void***)&(loop->active_requests),&(loop->n_active_requests), sizeof(uv_request_t*), (void*) req);
+    rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
         ESP_LOGE("RUN_ACCEPT_REQ", "Error during uv_remove in run_accept_req");
         return;
@@ -62,7 +62,7 @@ run_read_start_req(uv_request_t* req){
 
     read_start_req->read_cb(read_start_req->stream, read_start_req->nread, read_start_req->buf);
 
-    rv = uv_remove((void***)&(loop->active_requests),&(loop->n_active_requests), sizeof(uv_request_t*), (void*) req);
+    rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
         ESP_LOGE("RUN_READ_START_REQ", "Error during uv_remove in run_read_start_req");
         return;
@@ -74,7 +74,7 @@ run_read_stop_req(uv_request_t* req){
     int rv;
     loopFSM_t* loop = req->loop->loopFSM->user_data;
 
-    rv = uv_remove((void***)&(loop->active_requests),&(loop->n_active_requests), sizeof(uv_request_t*), (void*) req);
+    rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
         ESP_LOGE("RUN_READ_STOP_REQ", "Error during uv_remove in run_read_stop_req");
         return;
@@ -89,7 +89,7 @@ run_write_req(uv_request_t* req){
 
     write_req->cb(write_req, write_req->status);
 
-    rv = uv_remove((void***)&(loop->active_requests),&(loop->n_active_requests), sizeof(uv_request_t*), (void*) req);
+    rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
         ESP_LOGE("RUN_WRITE_REQ", "Error during uv_remove in run_write_req");
         return;

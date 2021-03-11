@@ -94,8 +94,8 @@ uv_loop_init (uv_loop_t* loop){
         return 1;
     }
 
-    struct timeval tv;
-    if(gettimeofday(&tv, NULL)){
+    uint32_t begin = pdTICKS_TO_MS(xTaskGetTickCount());
+    if(!begin){
         ESP_LOGE("LOOP_INIT", "Error during gettimeofday in loop init");
         return 1;
     }
@@ -107,7 +107,7 @@ uv_loop_init (uv_loop_t* loop){
     newLoopFSM->all_requests_run = 0;
     newLoopFSM->loop_is_closing = 0;
     newLoopFSM->loop_is_starting = 1;
-    newLoopFSM->time = tv.tv_usec/1000;
+    newLoopFSM->time = begin;
 
     loop->loopFSM = fsm_new_loopFSM (newLoopFSM);
 
@@ -145,12 +145,12 @@ uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is us
 
 void
 uv_update_time(loopFSM_t* loop){
-    struct timeval tv;
-    if(gettimeofday(&tv, NULL)){
+    uint32_t act_time = pdTICKS_TO_MS(xTaskGetTickCount());
+    if(!act_time){
         ESP_LOGE("UV_UPDATE_TIME", "Error during gettimeofday in uv_update_time");
         return;
     }
-    loop->time = tv.tv_usec/1000;
+    loop->time = act_time;
 }
 
 void
