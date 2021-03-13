@@ -60,11 +60,15 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
         return 0;
     }
     
-    err = gpio_isr_register(signal_isr, loop, ESP_INTR_FLAG_LEVEL5, NULL); // que prioridad pongo a las interrupciones?
-    if(err != 0){
-        ESP_LOGE("UV_SIGNAL_START", "Error during gpio_isr_register in uv_signal_start: err %d", err);
-        return 0;
+    if(!loop->signal_isr_activated){
+        err = gpio_isr_register(signal_isr, &loop, ESP_INTR_FLAG_LEVEL3, NULL); // que prioridad pongo a las interrupciones?
+        if(err != 0){
+            ESP_LOGE("UV_SIGNAL_START", "Error during gpio_isr_register in uv_signal_start: err %x", err);
+            return 0;
+        }
     }
+
+    loop->signal_isr_activated = 1;
 
     rv = uv_insert_handle(loop, (uv_handle_t*)handle);
     if (rv != 0){

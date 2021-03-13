@@ -9,10 +9,10 @@ To be verified
 
 // SIGNAL TEST
 
-#define INPUT_TEST_PORT_OFF 3
-#define INPUT_TEST_PORT_ON 4
-#define LED_TEST_PORT 13
-#define LED_DEBUG_PORT 5
+#define INPUT_TEST_PORT_OFF 22
+#define INPUT_TEST_PORT_ON 19
+#define LED_TEST_PORT 14
+// #define LED_DEBUG_PORT 5
 
 void
 test_callback_on (uv_signal_t* handle, int signum){
@@ -30,7 +30,7 @@ main_signal(void* ignore){
     gpio_config_t io_conf;
 
     io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
-    io_conf.pin_bit_mask = ((1ULL<<LED_DEBUG_PORT)|(1ULL<<LED_TEST_PORT));
+    io_conf.pin_bit_mask = 1ULL<<LED_TEST_PORT;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
@@ -39,11 +39,8 @@ main_signal(void* ignore){
     io_conf.intr_type = GPIO_PIN_INTR_POSEDGE;
     io_conf.pin_bit_mask = ((1ULL<<INPUT_TEST_PORT_OFF)|(1ULL<<INPUT_TEST_PORT_ON));
     io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
     gpio_config(&io_conf);
-
-    // Test led to be illuminated if execution begins
-    gpio_set_level(LED_DEBUG_PORT,0);
 
     // Init loop
     uv_loop_t* loop = malloc(sizeof(uv_loop_t));
@@ -70,10 +67,10 @@ main_signal(void* ignore){
     // Aqui hay un error
     rv = uv_signal_start(signal_handle_on, test_callback_on, INPUT_TEST_PORT_ON);
     if(rv != 0){
-        ESP_LOGE("SIGNAL_INIT","Error durante primer uv_signal_start en main_signal");
+        ESP_LOGE("SIGNAL_START","Error durante primer uv_signal_start en main_signal");
     }
 
-    ESP_LOGI("SIGNAL_INIT", "Primer uv_signal_start en main_signal");
+    ESP_LOGI("SIGNAL_START", "Primer uv_signal_start en main_signal");
 
     rv = uv_signal_init(loop, signal_handle_off);
     if(rv != 0){
@@ -84,10 +81,73 @@ main_signal(void* ignore){
 
     rv = uv_signal_start(signal_handle_off, test_callback_off, INPUT_TEST_PORT_OFF);
     if(rv != 0){
-        ESP_LOGE("SIGNAL_INIT","Error durante segundo uv_signal_start en main_signal");
+        ESP_LOGE("SIGNAL_START","Error durante segundo uv_signal_start en main_signal");
     }
 
-    ESP_LOGI("SIGNAL_INIT", "Segundo uv_signal_start en main_signal");
+    ESP_LOGI("SIGNAL_START", "Segundo uv_signal_start en main_signal");
+
+    rv = uv_run(loop);
+    if(rv != 0){
+        ESP_LOGE("UV_RUN","Error durante uv_run");
+    }
+
+    vTaskDelete(NULL);
+}
+
+// CHECK TEST
+
+#define LED_CHECK_TEST_PORT 14
+bool led_state = 0;
+
+// #define LED_DEBUG_PORT 5
+
+void
+check_callback (uv_check_t* handle){
+    gpio_set_level(LED_CHECK_TEST_PORT,(int)led_state);
+    led_state = !led_state;
+}
+
+
+void
+main_check(void* ignore){
+    // Configure GPIO
+    gpio_config_t io_conf;
+
+    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    io_conf.pin_bit_mask = 1ULL<<LED_CHECK_TEST_PORT;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    gpio_config(&io_conf);
+
+    // Init loop
+    uv_loop_t* loop = malloc(sizeof(uv_loop_t));
+    int rv;
+
+    rv = uv_loop_init(loop);
+    if(rv != 0){
+        ESP_LOGE("LOOP_INIT","Error durante la inicializacion en main_signal");
+    }
+
+    ESP_LOGI("LOOP_INIT", "Loop inicializado en main_signal");
+
+    // Init signal handle
+    uv_check_t* check_handle = malloc(sizeof(uv_check_t));
+
+    rv = uv_check_init(loop, check_handle);
+    if(rv != 0){
+        ESP_LOGE("CHECK_INIT","Error durante la primera inicializacion en main_check");
+    }
+
+    ESP_LOGI("CHECK_INIT", "Primer signal inicializado en main_check");
+
+    // Aqui hay un error
+    rv = uv_check_start(check_handle, check_callback);
+    if(rv != 0){
+        ESP_LOGE("CHECK_START","Error durante primer uv_check_start en main_check");
+    }
+
+    ESP_LOGI("CHECK_START", "Primer uv_check_start en main_check");
 
     rv = uv_run(loop);
     if(rv != 0){
@@ -195,5 +255,7 @@ void app_main(void)
 
     // wifi_init();
 
-    xTaskCreate(main_timer, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_signal, "startup", 4096, NULL, 5, NULL);
+    xTaskCreate(main_check, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_timer, "startup", 4096, NULL, 5, NULL);
 }

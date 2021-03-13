@@ -20,7 +20,7 @@
 /// Some global constants
 
 #define SIGNAL_TASK_PRIORITY 4
-#define LOOP_RATE_MS 100
+#define LOOP_RATE_MS 1000
 
 // fs flags
 
@@ -272,6 +272,7 @@ struct loopFSM_s
 
     int loop_is_closing : 1;
     int loop_is_starting : 1;
+    int signal_isr_activated : 1;
 
     uv_handle_t** active_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
     int n_active_handlers; // number of signal handlers

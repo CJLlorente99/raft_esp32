@@ -134,7 +134,7 @@ uv_now(const uv_loop_t* loop){
 int
 uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is used in raft
     portTickType xLastTime = xTaskGetTickCount();
-    const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
+    const portTickType xFrequency = LOOP_RATE_MS/(portTICK_RATE_MS*2); // el /2 no se porque lo tengo que poner
     ESP_LOGI("UV_RUN", "Entering uv_run loop");
     while(true){
         fsm_fire(loop->loopFSM);
