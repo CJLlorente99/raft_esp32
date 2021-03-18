@@ -26,14 +26,6 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
     req->stream = stream;
     req->status = 0;
 
-    // tcp->n_listen_requests++;
-    // tcp->listen_requests = realloc(tcp->listen_requests, tcp->n_listen_requests * sizeof(uv_listen_t*));
-    // if(!tcp->listen_requests){
-    //     printf("UV_LISTEN", "Error during realloc in uv_listen");
-    //     return 1;
-    // }
-    // memcpy(&(tcp->listen_requests[tcp->n_listen_requests-1]), &req, sizeof(uv_listen_t*));
-
     rv = uv_insert_tcp(tcp, (uv_request_t*)req, LISTEN);
     if(rv != 0){
         ESP_LOGE("UV_LISTEN","Error during uv_insert in uv_listen");

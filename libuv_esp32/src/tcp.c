@@ -218,12 +218,15 @@ run_tcp(uv_handle_t* handle){
         for(int i = 0; i < tcp->n_read_start_requests; i++){
             uv_read_start_t* req = (uv_read_start_t*)tcp->read_start_requests[i];
             if(select(tcp->socket, tcp->readset, NULL, NULL, NULL) && req->is_alloc){
+                // no se debería utilizar nread para saber cuanto falta por completar del buffer
+                // req->buf->base + nread, req->buf->len - nread
                 ssize_t nread = read(tcp->socket, req->buf->base, req->buf->len);
+                req->nread += nread;
                 if(nread < 0){
                     ESP_LOGE("RUN_TCP", "Error during read in run_tcp: errno %d", errno);
                 }
             }
-            rv = uv_insert_request(loop, tcp->read_start_requests[i]);
+            rv = uv_insert_request(loop, req);
                 if(rv != 0){
                     ESP_LOGE("RUN_TCP", "Error during uv_insert in run_tcp");
                     return;

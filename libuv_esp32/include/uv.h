@@ -284,33 +284,40 @@ struct loopFSM_s
 };
 
 // Some function prototypes
-
 void uv_update_time (loopFSM_t* loop);
 
 // Timer function protypes
-
 int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle);
 int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat);
 int uv_timer_stop(uv_timer_t* handle);
 int uv_timer_again(uv_timer_t* handle);
 
 // Signal function prototypes
-
 int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
 int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum);
 int uv_signal_stop(uv_signal_t* handle);
 
 // Check function prototypes
-
 int uv_check_init(uv_loop_t* loop, uv_check_t* check);
 int uv_check_start(uv_check_t* handle, uv_check_cb cb);
 int uv_check_close(uv_check_t* handle);
 
 // Loop function prototypes
-
 int uv_loop_init (uv_loop_t* loop);
 int uv_loop_close (uv_loop_t* loop);
 int uv_run (uv_loop_t* loop);
+
+// TCP function prototypes
+int uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp);
+int uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags);
+int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr, uv_connect_cb cb);
+
+// Stream function prototypes
+int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb);
+int uv_accept(uv_stream_t* server, uv_stream_t* client);
+int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
+int uv_read_stop(uv_stream_t* stream);
+int uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb);
 
 // Core function prototypes
 int uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle);
