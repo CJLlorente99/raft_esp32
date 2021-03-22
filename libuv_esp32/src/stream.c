@@ -136,8 +136,6 @@ int
 uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb){
     int rv;
     uv_tcp_t* tcp = (uv_tcp_t*) handle;
-    uv_buf_t* const_buf = malloc(nbufs * sizeof(bufs[0])); 
-    memcpy(const_buf, bufs, nbufs * sizeof(bufs[0]));
 
     tcp->write_cb = cb;
 
@@ -145,7 +143,7 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     req->req.loop = handle->self.loop;
     req->req.vtbl = &write_req_vtbl;
     req->status = 0;
-    req->bufs = const_buf;
+    req->bufs = bufs;
     req->nbufs = nbufs;
 
     rv = uv_insert_tcp(tcp, (uv_request_t*)req, WRITE);

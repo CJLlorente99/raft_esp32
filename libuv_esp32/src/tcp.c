@@ -43,9 +43,9 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     tcp->close_cb = NULL;
     tcp->connection_cb = NULL;
     tcp->read_cb = NULL;
-    FD_ZERO(tcp->readset);
-    FD_ZERO(tcp->writeset);
-    FD_ZERO(tcp->errorset);
+    FD_ZERO(&(tcp->readset));
+    FD_ZERO(&(tcp->writeset));
+    FD_ZERO(&(tcp->errorset));
 
     tcp->n_connect_requests = 0;
     tcp->connect_requests = NULL;
@@ -60,9 +60,9 @@ uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     // setsockopt()?
 
     tcp->socket = tcp_socket;
-    FD_SET(tcp_socket, tcp->readset);
-    FD_SET(tcp_socket, tcp->writeset);
-    FD_SET(tcp_socket, tcp->errorset);
+    FD_SET(tcp_socket, &(tcp->readset));
+    FD_SET(tcp_socket, &(tcp->writeset));
+    FD_SET(tcp_socket, &(tcp->errorset));
 
     // añadir a los handlers a los que se tiene que llamar desde el loop
     rv = uv_insert_handle(loop, (uv_handle_t*)tcp);
@@ -78,11 +78,9 @@ int
 uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
     // TODO
     // in raft implementation flags is always = 0 => do nothing with flags
-    struct sockaddr* const_addr = malloc(sizeof(struct sockaddr));
-    memcpy(const_addr, addr, sizeof(struct sockaddr));
 
     handle->bind = 1;
-    handle->src_sockaddr = const_addr;
+    handle->src_sockaddr = addr;
     return 0;
 }
 
@@ -98,13 +96,11 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     // this connection cb is a handshake or similar. That why a pollout whatcher is needed to send handshake msg
     // loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
-    struct sockaddr* const_addr = malloc(sizeof(struct sockaddr));
-    memcpy(const_addr, addr, sizeof(struct sockaddr));
 
     req->req.vtbl = &connect_req_vtbl;
     req->req.loop = handle->self.loop;
     req->cb = cb;
-    req->dest_sockaddr = const_addr;
+    req->dest_sockaddr = addr;
     req->status = 0;
 
     /* Add request to the request list */
@@ -190,7 +186,8 @@ run_tcp(uv_handle_t* handle){
     if(tcp->n_accept_requests > 0){ 
         for(int i = 0; i < tcp->n_accept_requests; i++){
             uv_accept_t* req = (uv_accept_t*)tcp->accept_requests[i];
-            if(select(tcp->socket, tcp->readset, NULL, NULL, NULL)){
+            // select 
+            if(select(tcp->socket, &(tcp->readset), NULL, NULL, NULL)){
                 socklen_t size = sizeof(struct sockaddr);
                 rv = accept(tcp->socket, req->client->src_sockaddr, &size);
                 if(rv != 0){
@@ -217,7 +214,7 @@ run_tcp(uv_handle_t* handle){
     if(tcp->n_read_start_requests > 0){ 
         for(int i = 0; i < tcp->n_read_start_requests; i++){
             uv_read_start_t* req = (uv_read_start_t*)tcp->read_start_requests[i];
-            if(select(tcp->socket, tcp->readset, NULL, NULL, NULL) && req->is_alloc){
+            if(select(tcp->socket, &(tcp->readset), NULL, NULL, NULL) && req->is_alloc){
                 // no se debería utilizar nread para saber cuanto falta por completar del buffer
                 // req->buf->base + nread, req->buf->len - nread
                 ssize_t nread = read(tcp->socket, req->buf->base, req->buf->len);
@@ -226,7 +223,7 @@ run_tcp(uv_handle_t* handle){
                     ESP_LOGE("RUN_TCP", "Error during read in run_tcp: errno %d", errno);
                 }
             }
-            rv = uv_insert_request(loop, req);
+            rv = uv_insert_request(loop, (uv_request_t*)req);
                 if(rv != 0){
                     ESP_LOGE("RUN_TCP", "Error during uv_insert in run_tcp");
                     return;
@@ -254,7 +251,7 @@ run_tcp(uv_handle_t* handle){
     if(tcp->n_write_requests > 0){ 
         for(int i = 0; i < tcp->n_write_requests; i++){
             uv_write_t* req = (uv_write_t*)tcp->write_requests[i];
-            if(select(tcp->socket, NULL, tcp->writeset, NULL, NULL)){
+            if(select(tcp->socket, NULL, &(tcp->writeset), NULL, NULL)){
                 rv = write(tcp->socket, req->bufs, req->nbufs * sizeof(req->bufs[0]));
                 req->status = rv;
                 if(rv < 0){

@@ -2,7 +2,7 @@
 
 #define LED_DEBUG_PORT 5
 
-static void signal_isr(loopFSM_t* loop);
+static void IRAM_ATTR signal_isr(void* args);
 
 // EL UNICO USO QUE SE HACE DEL SIGNAL EN RAFT ES PARA CAPTAR SEÑALES DE INTERRUPCION
 // GENERADAS POR EL USER
@@ -34,6 +34,7 @@ uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){
     handle->intr_bit = 0;
     handle->signal_cb = NULL;
     handle->signum = 0;
+
     return 0;
 }
 
@@ -52,20 +53,32 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 
     // Init interrupt for given signum
 
-    ESP_LOGI("UV_SIGNAL_START", "Setting interrupt for signum %d\n", signum);
+    ESP_LOGI("UV_SIGNAL_START", "Setting interrupt for signum %d", signum);
+
+    err = gpio_intr_enable(signum);
+    if(err != 0){
+        ESP_LOGE("UV_SIGNAL_START", "Error during gpio_intr_enable in uv_signal_start: err %d", err);
+        return 1;
+    }
 
     err = gpio_set_intr_type(signum, GPIO_INTR_POSEDGE); // can also be done through gpio_config
     if(err != 0){
         ESP_LOGE("UV_SIGNAL_START", "Error during gpio_set_intr_type in uv_signal_start: err %d", err);
-        return 0;
+        return 1;
     }
     
     if(!loop->signal_isr_activated){
-        err = gpio_isr_register(signal_isr, &loop, ESP_INTR_FLAG_LEVEL3, NULL); // que prioridad pongo a las interrupciones?
+        err = gpio_install_isr_service(0);
         if(err != 0){
             ESP_LOGE("UV_SIGNAL_START", "Error during gpio_isr_register in uv_signal_start: err %x", err);
-            return 0;
+            return 1;
         }
+    }
+    
+    err = gpio_isr_handler_add(signum, signal_isr, (void*) handle);
+    if (err != 0){
+        ESP_LOGE("UV_SIGNAL_START", "Error during gpio_isr_handler_add in uv_signal_start: err %x", err);
+        return 1;
     }
 
     loop->signal_isr_activated = 1;
@@ -83,6 +96,19 @@ int
 uv_signal_stop(uv_signal_t* handle){
     loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
+    esp_err_t err;
+
+    err = gpio_intr_disable(handle->signum);
+    if (err != 0){
+        ESP_LOGE("UV_SIGNAL_STOP", "Error when calling gpio_intr_disable in uv_signal_stop: err %x", err);
+        return 1;
+    }
+
+    err = gpio_isr_handler_remove(handle->signum);
+    if(err != 0){
+        ESP_LOGE("UV_SIGNAL_STOP", "Error when calling gpio_isr_handler_remove in uv_signal_stop: err %x", err);
+        return 1;
+    }
 
     rv = uv_remove_handle(loop, (uv_handle_t*)handle);
     if(rv != 0){
@@ -93,19 +119,8 @@ uv_signal_stop(uv_signal_t* handle){
     return 0;
 }
 
-static void
-signal_isr(loopFSM_t* loop){
-    ESP_LOGD("SIGNAL_ISR", "Signal interrupt has taken place");
-    // comprobar cual es el handler que ha sido activado y activar el intr_bit
-    for (int i = 0; i < loop->n_active_handlers; i++){
-        uv_signal_t* signal = (uv_signal_t*)loop->active_handlers[i];
-        if(signal->signum){ // what i am trying to do with this is check if reference actually exists (it is a uv_signal_t indeed)
-            if (gpio_get_level(signal->signum)){
-                signal->intr_bit = 1;
-            }
-            // is this option also possible?
-            // loop->active_handlers[i]->handle_signal->intr_bit = ((bitmask >> loop->active_handlers[i]->handle_signal->signum) & 1);
-        }
-    }
-    
+static void IRAM_ATTR
+signal_isr(void* args){
+    uv_signal_t* signal = (uv_signal_t*) args;
+    signal->intr_bit = 1;
 }

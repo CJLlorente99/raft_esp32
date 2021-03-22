@@ -104,10 +104,12 @@ uv_loop_init (uv_loop_t* loop){
     newLoopFSM->n_active_handlers = 0;
     newLoopFSM->n_handlers_run = 0;
     newLoopFSM->active_requests = NULL;
+    newLoopFSM->n_active_requests = 0;
     newLoopFSM->all_requests_run = 0;
     newLoopFSM->loop_is_closing = 0;
     newLoopFSM->loop_is_starting = 1;
     newLoopFSM->time = begin;
+    newLoopFSM->signal_isr_activated = 0;
 
     loop->loopFSM = fsm_new_loopFSM (newLoopFSM);
 

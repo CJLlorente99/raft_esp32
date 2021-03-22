@@ -20,7 +20,7 @@
 /// Some global constants
 
 #define SIGNAL_TASK_PRIORITY 4
-#define LOOP_RATE_MS 1000
+#define LOOP_RATE_MS 20
 
 // fs flags
 
@@ -143,13 +143,13 @@ struct uv_write_s {
     uv_request_t req;
     uv_write_cb cb;
     int status;
-    uv_buf_t* bufs;
+    const uv_buf_t* bufs;
     int nbufs;
 };
 
 struct uv_connect_s {
     uv_request_t req;
-    struct sockaddr* dest_sockaddr;
+    const struct sockaddr* dest_sockaddr;
     uv_connect_cb cb;
     int status;
 };
@@ -216,10 +216,10 @@ struct uv_tcp_s {
     uv_connect_cb connect_cb;
     uv_write_cb write_cb;
     int socket;
-    struct sockaddr* src_sockaddr;
-    fd_set* readset;
-    fd_set* writeset;
-    fd_set* errorset;
+    const struct sockaddr* src_sockaddr;
+    fd_set readset;
+    fd_set writeset;
+    fd_set errorset;
     
     int bind : 1;
 

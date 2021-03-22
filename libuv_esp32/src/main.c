@@ -40,6 +40,7 @@ main_signal(void* ignore){
     io_conf.pin_bit_mask = ((1ULL<<INPUT_TEST_PORT_OFF)|(1ULL<<INPUT_TEST_PORT_ON));
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf);
 
     // Init loop
@@ -479,7 +480,9 @@ void app_main(void)
     // either use lwip to disable dhcp and set static ip
     // or esp_netif to do the same
 
-    // xTaskCreate(main_signal, "startup", 4096, NULL, 5, NULL);
-    xTaskCreate(main_check, "startup", 4096, NULL, 5, NULL);
+    xTaskCreate(main_signal, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_check, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_tcp_server, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_tcp_client, "startup", 4096, NULL, 5, NULL);
 }
