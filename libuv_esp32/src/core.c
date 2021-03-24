@@ -35,18 +35,22 @@ int
 uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle){
     // Allocate memory for new array of handlers
     int new_n_active = loop->n_active_handlers - 1;
-    uv_handle_t** new_pointer = malloc(new_n_active * sizeof(uv_handle_t*));
+    uv_handle_t** new_pointer = loop->active_handlers;
 
-    if(!new_pointer){
-        ESP_LOGE("UV_REMOVE_HANDLE", "Error new_pointer is NULL after malloc in uv_remove_handles");
-        return 1;
-    }
+    if(new_n_active > 0){
+        new_pointer = malloc(new_n_active * sizeof(uv_handle_t*));
 
-    // Add handlers, except from the one stopped
-    int j = 0;
-    for(int i = 0; i < loop->n_active_handlers; i++){
-        if(loop->active_handlers[i] != handle){
-            memcpy(&(new_pointer[j++]), &(loop->active_handlers[i]), sizeof(uv_handle_t*));
+        if(!new_pointer){
+            ESP_LOGE("UV_REMOVE_HANDLE", "Error new_pointer is NULL after malloc in uv_remove_handles");
+            return 1;
+        }
+
+        // Add handlers, except from the one stopped
+        int j = 0;
+        for(int i = 0; i < loop->n_active_handlers; i++){
+            if(loop->active_handlers[i] != handle){
+                memcpy(&(new_pointer[j++]), &(loop->active_handlers[i]), sizeof(uv_handle_t*));
+            }
         }
     }
 
@@ -58,7 +62,7 @@ uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle){
 
 int
 uv_insert_request(loopFSM_t* loop, uv_request_t* req){
-    int i = (loop->n_active_requests)++; // array index
+    int i = loop->n_active_requests + 1; // array index
 
     if(i == 1){
         loop->active_requests = malloc(sizeof(uv_request_t*));
@@ -86,21 +90,24 @@ int
 uv_remove_request(loopFSM_t* loop, uv_request_t* req){
     // Allocate memory for new array of handlers
     int new_n_active = loop->n_active_requests - 1;
-    uv_request_t** new_pointer = malloc(new_n_active * sizeof(uv_request_t*));
+    uv_request_t** new_pointer = loop->active_requests;
 
-    if(!new_pointer){
-        ESP_LOGE("UV_REMOVE_REQUESTS", "Error new_pointer is NULL after malloc in uv_remove_requests");
-        return 1;
-    }
+    if(new_n_active > 0){
+        new_pointer = malloc(new_n_active * sizeof(uv_request_t*));
+        if(!new_pointer){
+            ESP_LOGE("UV_REMOVE_REQUESTS", "Error new_pointer is NULL after malloc in uv_remove_requests");
+            return 1;
+        }
 
-    // Add handlers, except from the one stopped
-    int j = 0;
-    for(int i = 0; i < loop->n_active_requests; i++){
-        if(loop->active_requests[i] != req){
-            memcpy(&(new_pointer[j++]), &(loop->active_requests[i]), sizeof(uv_request_t*));
+        // Add handlers, except from the one stopped
+        int j = 0;
+        for(int i = 0; i < loop->n_active_requests; i++){
+            if(loop->active_requests[i] != req){
+                memcpy(&(new_pointer[j++]), &(loop->active_requests[i]), sizeof(uv_request_t*));
+            }
         }
     }
-
+    
     loop->n_active_requests = new_n_active;
     loop->active_requests = new_pointer;
 
@@ -121,7 +128,7 @@ uv_insert_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type){
 
     case LISTEN:
         n_active = tcp->n_listen_requests;
-        pointer = (uv_request_t**)tcp-> listen_requests;
+        pointer = (uv_request_t**)tcp->listen_requests;
         break;
 
     case ACCEPT:
@@ -148,55 +155,56 @@ uv_insert_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type){
         return 1;
     }
 
-    int i = n_active++; // array index
+    int i = n_active + 1; // array index
+    uv_request_t** newpointer;
 
     if(i == 1){
-        pointer = malloc(sizeof(uv_request_t*));
-        if(!pointer){
+        newpointer = malloc(sizeof(uv_request_t*));
+        if(!newpointer){
             ESP_LOGE("UV_INSERT_REQUESTS", "Error pointer is NULL after malloc in uv_insert_requests");
             return 1;
         }
             
-        memcpy(pointer, &req, sizeof(uv_request_t*));
+        memcpy(newpointer, &req, sizeof(uv_request_t*));
     } else{
-        pointer = realloc(pointer, i * sizeof(uv_request_t*));
-        if(!pointer){
+        newpointer = realloc(pointer, i * sizeof(uv_request_t*));
+        if(!newpointer){
             ESP_LOGE("UV_INSERT_REQUESTS", "Error pointer is NULL after malloc in uv_insert_requests");
             return 1;
         }
-        memcpy(&(pointer[i-1]), &req, sizeof(uv_request_t*));
+        memcpy(&(newpointer[i-1]), &req, sizeof(uv_request_t*));
     }
 
     switch (type)
     {
     case CONNECT:
         tcp->n_connect_requests = i;
-        tcp->connect_requests = pointer;
+        tcp->connect_requests = newpointer;
         break;
 
     case LISTEN:
         tcp->n_listen_requests = i;
-        tcp-> listen_requests = pointer;
+        tcp-> listen_requests = newpointer;
         break;
 
     case ACCEPT:
         tcp->n_accept_requests = i;
-        tcp->accept_requests = pointer;
+        tcp->accept_requests = newpointer;
         break;
 
     case READ_START:
         tcp->n_read_start_requests = i;
-        tcp->read_start_requests = pointer;
+        tcp->read_start_requests = newpointer;
         break;
 
     case READ_STOP:
         tcp->n_read_stop_requests = i;
-        tcp->read_stop_requests = pointer;
+        tcp->read_stop_requests = newpointer;
         break;
 
     case WRITE:
         tcp->n_write_requests = i;
-        tcp->write_requests = pointer;
+        tcp->write_requests = newpointer;
         break;
     
     default:
@@ -248,18 +256,23 @@ uv_remove_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type){
     }
 
     int new_n_active = n_active - 1;
-    uv_request_t** new_pointer = malloc(new_n_active * sizeof(uv_request_t*));
+    uv_request_t** new_pointer = pointer;
 
-    if(!new_pointer){
-        ESP_LOGE("UV_REMOVE_REQUESTS", "Error new_pointer is NULL after malloc in uv_remove_requests");
-        return 1;
-    }
+    if(new_n_active > 0){
+        new_pointer = malloc(new_n_active * sizeof(uv_request_t*));
+    
 
-    // Add handlers, except from the one stopped
-    int j = 0;
-    for(int i = 0; i < n_active; i++){
-        if(pointer[i] != req){
-            memcpy(&(new_pointer[j++]), &(pointer[i]), sizeof(uv_request_t*));
+        if(!new_pointer){
+            ESP_LOGE("UV_REMOVE_REQUESTS", "Error new_pointer is NULL after malloc in uv_remove_tcp");
+            return 1;
+        }
+
+        // Add handlers, except from the one stopped
+        int j = 0;
+        for(int i = 0; i < n_active; i++){
+            if(pointer[i] != req){
+                memcpy(&(new_pointer[j++]), &(pointer[i]), sizeof(uv_request_t*));
+            }
         }
     }
 

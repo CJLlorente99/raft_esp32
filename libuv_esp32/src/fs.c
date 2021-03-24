@@ -1,7 +1,7 @@
 #include "uv.h"
 
 /*
- *  CAREFULL
+ *  CAREFUL
  *  ERRORS ARE ANALYZED IN RAFT TO GIVE INFO ABOUT
  *  CONSIDER "TRANSLATING" ERROR CODES
  *  FOR EXAMPLE: FR_NO_FILE (FATFS) = UV_ENOENT (SEE ERROR.C IN ORIGINAL LIBUV)
@@ -136,7 +136,53 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     // returns number of files in the directory
     // idea, use a counter and f_findfirst and f_findnext. 
     // When one of these returns fno->fname[] == null, no more files available
-    return 0;
+    FRESULT rv;
+    int rv2;
+    loopFSM_t* loopFSM;
+    int fileCounter = 0;
+    FF_DIR* dp;
+    FILINFO* fno;
+
+    req->path = path; 
+    
+    if(loop && cb){
+        loopFSM = loop->loopFSM->user_data;
+        req = malloc(sizeof(uv_fs_t));
+        req->req.loop = loop;
+        req->req.vtbl = &fs_req_vtbl;
+        req->cb = cb;
+
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
+        if (rv2 != 0)
+        {
+            ESP_LOGE("UV_FS_OPEN", "Error during uv_insert in uv_fs_open");
+            return 1;
+        }
+    }
+
+    rv = f_findfirst(dp, fno, path, "*");
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_SCANDIR", "Error during f_findfirst in uv_fs_scandir. Code = %d", rv);
+        return 0;
+    }
+
+    TCHAR* fname = fno->fname;
+    while(fname[0] != NULL){
+        fileCounter++;
+        rv = f_findnext(dp, fno);
+        if(rv != FR_OK){
+            ESP_LOGE("UV_FS_SCANDIR", "Error during f_findnext in uv_fs_scandir. Code = %d", rv);
+            return 0;
+        }
+        fname = fno->fname;
+    }
+
+    rv = f_closedir(dp);
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_SCANDIR", "Error during f_closedir in uv_fs_scandir. Code = %d", rv);
+    }
+
+    return fileCounter;
 }
 
 int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
@@ -144,6 +190,40 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
     // called after uv_fs_scandir
     // fills ent with the files present in req->dir (por ejemplo)
     // use f_findfirst and f_findnext to fill ent (containing the paths)
+    FRESULT rv;
+    int rv2;
+    loopFSM_t* loopFSM;
+    FF_DIR* dp;
+    int fileCounter = 0;
+    FILINFO* fno;
+
+    rv = f_findfirst(dp, fno, req->path, "*");
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_SCANDIR", "Error during f_findfirst in uv_fs_scandir. Code = %d", rv);
+        return 0;
+    }
+
+    TCHAR* fname = fno->fname;
+    char* filePath;
+    while(fname != NULL){
+        fileCounter++;
+        filePath = strcat(req->path, fname);
+        realloc(ent, fileCounter*sizeof(uv_dirent_t));
+        ent[fileCounter - 1].name = filePath;
+        ent[fileCounter - 1].type = UV_DIRENT_FILE;
+
+        rv = f_findnext(dp, fno);
+        if(rv != FR_OK){
+            ESP_LOGE("UV_FS_SCANDIR", "Error during f_findnext in uv_fs_scandir. Code = %d", rv);
+            return 0;
+        }
+        fname = fno->fname;
+    }
+
+    rv = f_closedir(dp);
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_SCANDIR", "Error during f_closedir in uv_fs_scandir. Code = %d", rv);
+    }
     return 0;
 }
 
@@ -155,8 +235,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     loopFSM_t* loopFSM;
     req = malloc(sizeof(uv_fs_t));
     uv_stat_t statbuf;
-    FILINFO* fno = malloc(sizeof(FILINFO)); // is it necessary to malloc even if it is only
-    // going to be used within this function
+    FILINFO fno;
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
@@ -172,14 +251,14 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
         }
     }
 
-    rv = f_stat(path, fno);
+    rv = f_stat(path, &fno);
     if (rv != FR_OK)
     {
         ESP_LOGE("UV_FS_WRITE", "Error in uv_fs_write. Code = %d", rv);
         return 1;
     }
 
-    statbuf.st_size = fno->fsize;
+    statbuf.st_size = fno.fsize;
     req->statbuf = statbuf;
 
     return 0;

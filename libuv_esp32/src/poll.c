@@ -10,6 +10,15 @@ int
 uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd){
     handle->self->loop = loop;
     handle->self->vtbl = &poll_vtbl;
+    handle->events = 0;
+    handle->cb = NULL;
+    handle->fd = fd;
+
+    FD_ZERO(&handle->readset);
+    FD_ZERO(&handle->writeset);
+
+    FD_SET(fd, &handle->readset);
+    FD_SET(fd, &handle->writeset);
 
     return 0;
 }
@@ -20,6 +29,7 @@ uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb){
     int rv;
     
     handle->cb = cb;
+    handle->events = events;
 
     rv = uv_insert_handle(loop, (uv_handle_t*)handle);
     if(rv != 0){
@@ -43,5 +53,12 @@ uv_poll_stop(uv_poll_t* poll){
 
 void
 run_poll(uv_handle_t* handle){
+    uv_poll_t* poll_handle = (uv_poll_t*) handle;
+    int rv;
+    int status = 0;
 
+    if(poll_handle->events == UV_READABLE){
+        if(select(poll_handle->fd, &poll_handle->readset, NULL, NULL, 0))
+            poll_handle->cb(poll_handle, status, poll_handle->events);
+    }
 }

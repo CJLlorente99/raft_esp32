@@ -25,13 +25,23 @@ event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* ev
 }
 
 void
-wifi_init(void){
+wifi_init(char* ip_addr){
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
+    esp_netif_t* esp_netif = esp_netif_create_default_wifi_sta();
+
+    ESP_ERROR_CHECK(esp_netif_dhcpc_stop(esp_netif));
+
+    esp_netif_ip_info_t ip_info;
+    ip_info.gw.addr = ipaddr_addr(GATEWAY_ADDR);
+    ip_info.ip.addr = ipaddr_addr(ip_addr);
+    ip_info.netmask.addr = ipaddr_addr(NETMASK);
+    ESP_ERROR_CHECK(esp_netif_set_ip_info(esp_netif, &ip_info));
+
+    ESP_ERROR_CHECK(esp_netif_set_hostname(esp_netif, "ESP-WROOM-32"));
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));

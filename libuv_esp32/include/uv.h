@@ -47,6 +47,11 @@
 #define UV_FS_O_TRUNC   FA_CREATE_ALWAYS
 #define UV_FS_O_WRONLY  FA_WRITE
 
+// poll events
+
+#define UV_READABLE     POLLIN
+#define UV_WRITABLE     POLLOUT  
+
 // Enums
 
 typedef enum{
@@ -57,6 +62,11 @@ typedef enum{
     READ_STOP,
     WRITE
 }tcp_type;
+
+typedef enum {
+    UV_DIRENT_UNKNOWN,
+    UV_DIRENT_FILE
+} uv_dirent_type_t;
 
 /// Declaration
 
@@ -108,6 +118,14 @@ typedef void (*uv_poll_cb)(uv_poll_t* handle, int status, int events);
 
 // For fs puposes
 typedef void (*uv_fs_cb)(uv_fs_t* req);
+
+// pollfd
+
+typedef struct pollfd{
+    int fd;
+    short events;
+    short revents;
+};
 
 // handle "class"
 struct uv_handle_s {
@@ -182,7 +200,8 @@ struct uv_read_stop_s {
 };
 
 struct uv_dirent_s {
-
+    const char* name;
+    uv_dirent_type_t type;
 };
 
 struct uv_stat_s {
@@ -193,11 +212,16 @@ struct uv_fs_s {
     uv_request_t req;
     uv_fs_cb cb;
     uv_stat_t statbuf;
+    const char* path;
 };
 
 struct uv_poll_s {
     uv_handle_t* self;
     uv_poll_cb cb;
+    int events;
+    int fd;
+    fd_set readset;
+    fd_set writeset;
 };
 
 

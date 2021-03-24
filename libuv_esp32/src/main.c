@@ -243,8 +243,8 @@ main_timer(void* ignore){
 
 // TCP test server
 
-#define LOCALIP "192.168.0.100"
-#define CLIENTIP "192.168.0.101"
+#define LOCALIP "192.168.0.200"
+#define CLIENTIP "192.168.0.201"
 
 uv_tcp_t* tcp_server;
 
@@ -342,6 +342,8 @@ main_tcp_server(void* ignore){
     if(rv != 0){
         ESP_LOGE("TIMER_START", "Error in first uv_timer_start in main_timer");
     }
+
+    ESP_LOGI("TIMER_START", "Second uv_timer_start success");
 
     rv = uv_run(loop);
     if(rv != 0){
@@ -462,6 +464,8 @@ main_tcp_client(void* ignore){
     vTaskDelete(NULL);
 }
 
+// FS test
+
 void app_main(void)
 {
     ESP_LOGI("APP_MAIN", "Beggining app_main");
@@ -475,14 +479,15 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // wifi_init();
+    wifi_init(LOCALIP);
+    // wifi_init(CLIENTIP);
     // is it necessary to change to static IP from dhcp?
     // either use lwip to disable dhcp and set static ip
     // or esp_netif to do the same
 
-    xTaskCreate(main_signal, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_signal, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_check, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 4096, NULL, 5, NULL);
-    // xTaskCreate(main_tcp_server, "startup", 4096, NULL, 5, NULL);
+    xTaskCreate(main_tcp_server, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_tcp_client, "startup", 4096, NULL, 5, NULL);
 }
