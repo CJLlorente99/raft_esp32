@@ -16,6 +16,9 @@
 #include "lwip/err.h"
 #include "ff.h"
 #include "esp_log.h"
+#include "esp_vfs_fat.h"
+#include "esp_system.h"
+// #include "esp_vfs.h"
 
 /// Some global constants
 
@@ -118,14 +121,6 @@ typedef void (*uv_poll_cb)(uv_poll_t* handle, int status, int events);
 
 // For fs puposes
 typedef void (*uv_fs_cb)(uv_fs_t* req);
-
-// pollfd
-
-typedef struct pollfd{
-    int fd;
-    short events;
-    short revents;
-};
 
 // handle "class"
 struct uv_handle_s {
@@ -342,6 +337,18 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client);
 int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 int uv_read_stop(uv_stream_t* stream);
 int uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb);
+
+// FS function protypes
+int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
+FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb);
+int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb);
+int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb);
+int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent);
+int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
+int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb);
+int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
+int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset, uv_fs_cb cb);
+int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
 
 // Core function prototypes
 int uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle);

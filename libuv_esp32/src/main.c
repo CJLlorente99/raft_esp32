@@ -7,6 +7,9 @@ To be verified
 #include "uv.h"
 #include "init.h"
 
+// Handle of the wear levelling library instance
+// static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
+
 // SIGNAL TEST
 
 #define INPUT_TEST_PORT_OFF 22
@@ -466,6 +469,214 @@ main_tcp_client(void* ignore){
 
 // FS test
 
+#define BUTTON_NEWFILEDIR1  22
+#define BUTTON_NEWFILEDIR2  19
+#define BUTTON_INFO         18
+
+// iniciar un boton para cada grupo de instrucciones
+void
+newFileDir1 (uv_signal_t* handle, int signum){
+    int rv;
+    FIL file;
+    uv_fs_t req;
+    const char* path = "dir1/example.txt";
+    
+    file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
+
+    uv_buf_t bufs[2];
+    bufs[0].base = "Mensaje de prueba\n";
+    bufs[0].len = sizeof(bufs[1].base);
+    bufs[1].base = "Mensaje de prueba 2\n";
+    bufs[1].len = sizeof(bufs[2].base);
+
+    rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
+    if(rv != 0){
+        ESP_LOGE("NEWFILEDIR1", "uv_fs_write");
+    }
+
+    rv = uv_fs_close(NULL, &req, file, NULL);
+    if(rv != 0){
+        ESP_LOGE("NEWFILEDIR1", "uv_fs_close");
+    }
+}
+
+void
+newFileDir2 (uv_signal_t* handle, int signum){
+    int rv;
+    FIL file;
+    uv_fs_t req;
+    const char* path = "dir2/example.txt";
+    
+    file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
+
+    uv_buf_t bufs[2];
+    bufs[0].base = "Mensaje de prueba\n";
+    bufs[0].len = sizeof(bufs[1].base);
+    bufs[1].base = "Mensaje de prueba 2\n";
+    bufs[1].len = sizeof(bufs[2].base);
+
+    rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
+    if(rv != 0){
+        ESP_LOGE("NEWFILEDIR2", "uv_fs_write");
+    }
+
+    rv = uv_fs_close(NULL, &req, file, NULL);
+    if(rv != 0){
+        ESP_LOGE("NEWFILEDIR2", "uv_fs_close");
+    }
+}
+
+void
+info(uv_signal_t* handle, int signum){
+    int rv;
+    int n;
+    FIL file;
+    FRESULT fr;
+    uv_fs_t req;
+    const char* path1 = "dir1/example.txt";
+    uv_dirent_t* ent = NULL;
+
+    n = uv_fs_scandir(NULL, &req, path1, 0, NULL);
+    ESP_LOGI("INFO", "Numero de archivos %d", n);
+
+    rv = uv_fs_scandir_next(&req, ent);
+    if(rv != 0){
+        ESP_LOGE("INFO", "uv_fs_scandir_next");
+    }
+
+    uv_dirent_t dirent;
+    char* buf;
+    UINT br; 
+    for(int i = 0; i < n; i++){
+        dirent = ent[i];
+        ESP_LOGI("INFO", "File name is %s", dirent.name);
+        file = uv_fs_open(NULL, &req, dirent.name, UV_FS_O_RDONLY, 0, NULL);
+        rv = uv_fs_stat(NULL, &req, dirent.name, NULL);
+        fr = f_read(&file, &buf, req.statbuf.st_size, &br);
+        if(fr != FR_OK){
+            ESP_LOGE("INFO", "f_read");
+        }
+
+        for(int j = 0; j < br; j++){
+            ESP_LOGI("INFO", "%c", buf[j]);
+        }
+
+        rv = uv_fs_close(NULL, &req, file, NULL);
+        if(rv != 0){
+            ESP_LOGE("INFO", "uv_fs_close");
+        }
+    }
+
+    const char* path2 = "dir2/example.txt";
+
+    n = uv_fs_scandir(NULL, &req, path2, 0, NULL);
+    ESP_LOGI("INFO", "Numero de archivos %d", n);
+
+    rv = uv_fs_scandir_next(&req, ent);
+    if(rv != 0){
+        ESP_LOGE("INFO", "uv_fs_scandir_next");
+    }
+
+    for(int i = 0; i < n; i++){
+        dirent = ent[i];
+        ESP_LOGI("INFO", "File name is %s", dirent.name);
+        file = uv_fs_open(NULL, &req, dirent.name, UV_FS_O_RDONLY, 0, NULL);
+        rv = uv_fs_stat(NULL, &req, dirent.name, NULL);
+        fr = f_read(&file, &buf, req.statbuf.st_size, &br);
+        if(fr != FR_OK){
+            ESP_LOGE("INFO", "f_read");
+        }
+        
+        for(int j = 0; j < br; j++){
+            ESP_LOGI("INFO", "%c", buf[j]);
+        }
+        rv = uv_fs_close(NULL, &req, file, NULL);
+        if(rv != 0){
+            ESP_LOGE("INFO", "uv_fs_close");
+        }
+    }
+
+}
+
+void
+main_fs(void* ignore){
+    // Configure GPIO
+    gpio_config_t io_conf;
+
+    io_conf.intr_type = GPIO_PIN_INTR_POSEDGE;
+    io_conf.pin_bit_mask = ((1ULL<<BUTTON_NEWFILEDIR1)|(1ULL<<BUTTON_NEWFILEDIR2) | (1ULL<<BUTTON_INFO));
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    gpio_config(&io_conf); 
+
+    // Init loop
+    uv_loop_t* loop = malloc(sizeof(uv_loop_t));
+    int rv;
+
+    rv = uv_loop_init(loop);
+    if(rv != 0){
+        ESP_LOGE("LOOP_INIT","Error durante la inicializacion en main_fs");
+    }
+
+    ESP_LOGI("LOOP_INIT", "Loop inicializado en main_fs");
+
+    // Init signal handle
+    uv_signal_t* signal_info = malloc(sizeof(uv_signal_t));
+    uv_signal_t* signal_dir1 = malloc(sizeof(uv_signal_t));
+    uv_signal_t* signal_dir2 = malloc(sizeof(uv_signal_t));
+
+    rv = uv_signal_init(loop, signal_info);
+    if(rv != 0){
+        ESP_LOGE("SIGNAL_INIT","Error durante la primera inicializacion en main_fs");
+    }
+
+    ESP_LOGI("SIGNAL_INIT", "Primer signal inicializado en main_fs");
+
+    rv = uv_signal_start(signal_info, info, BUTTON_INFO);
+    if(rv != 0){
+        ESP_LOGE("SIGNAL_START","Error durante primer uv_signal_start en main_fs");
+    }
+
+    ESP_LOGI("SIGNAL_START", "Primer uv_signal_start en main_fs");
+
+    rv = uv_signal_init(loop, signal_dir1);
+    if(rv != 0){
+        ESP_LOGE("SIGNAL_INIT","Error durante la primera inicializacion en main_fs");
+    }
+
+    ESP_LOGI("SIGNAL_INIT", "Primer signal inicializado en main_fs");
+
+    // Aqui hay un error
+    rv = uv_signal_start(signal_dir1, newFileDir1, BUTTON_NEWFILEDIR1);
+    if(rv != 0){
+        ESP_LOGE("SIGNAL_START","Error durante primer uv_signal_start en main_fs");
+    }
+
+    ESP_LOGI("SIGNAL_START", "Primer uv_signal_start en main_fs");
+
+    rv = uv_signal_init(loop, signal_dir2);
+    if(rv != 0){
+        ESP_LOGE("SIGNAL_INIT","Error durante la primera inicializacion en main_fs");
+    }
+
+    ESP_LOGI("SIGNAL_INIT", "Primer signal inicializado en main_fs");
+
+    rv = uv_signal_start(signal_dir2, newFileDir2, BUTTON_NEWFILEDIR2);
+    if(rv != 0){
+        ESP_LOGE("SIGNAL_START","Error durante primer uv_signal_start en main_fs");
+    }
+
+    ESP_LOGI("SIGNAL_START", "Primer uv_signal_start en main_fs");
+
+    rv = uv_run(loop);
+    if(rv != 0){
+        ESP_LOGE("UV_RUN", "Error in uv_run in main_fs");
+    }
+
+    vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
     ESP_LOGI("APP_MAIN", "Beggining app_main");
@@ -485,9 +696,30 @@ void app_main(void)
     // either use lwip to disable dhcp and set static ip
     // or esp_netif to do the same
 
+    // ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
+
+    // FATFS* fatfs = malloc(sizeof(FATFS));
+    // FRESULT fr;
+    // const esp_vfs_fat_mount_config_t mount_config = {
+    //         .max_files = 5,
+    //         .format_if_mount_failed = true,
+    //         .allocation_unit_size = CONFIG_WL_SECTOR_SIZE
+    // };
+    // esp_err_t err = esp_vfs_fat_spiflash_mount("/spiflash", "storage", &mount_config, &s_wl_handle);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE("APP_MAIN", "Failed to mount FATFS (%s)", esp_err_to_name(err));
+    //     return;
+    // }
+
+    // fr = f_mount(fatfs, NULL, 0);
+    // if(fr != 0){
+    //     ESP_LOGE("APP_MAIN", "f_mount error : %d", fr);
+    // }
+
     // xTaskCreate(main_signal, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_check, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 4096, NULL, 5, NULL);
     xTaskCreate(main_tcp_server, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_tcp_client, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_fs, "startup", 4096, NULL, 5, NULL);
 }

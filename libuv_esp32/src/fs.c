@@ -140,8 +140,8 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     int rv2;
     loopFSM_t* loopFSM;
     int fileCounter = 0;
-    FF_DIR* dp;
-    FILINFO* fno;
+    FF_DIR dp;
+    FILINFO fno;
 
     req->path = path; 
     
@@ -160,24 +160,24 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
         }
     }
 
-    rv = f_findfirst(dp, fno, path, "*");
+    rv = f_findfirst(&dp, &fno, path, "*");
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_SCANDIR", "Error during f_findfirst in uv_fs_scandir. Code = %d", rv);
         return 0;
     }
 
-    TCHAR* fname = fno->fname;
+    TCHAR* fname = fno.fname;
     while(fname[0] != NULL){
         fileCounter++;
-        rv = f_findnext(dp, fno);
+        rv = f_findnext(&dp, &fno);
         if(rv != FR_OK){
             ESP_LOGE("UV_FS_SCANDIR", "Error during f_findnext in uv_fs_scandir. Code = %d", rv);
             return 0;
         }
-        fname = fno->fname;
+        fname = fno.fname;
     }
 
-    rv = f_closedir(dp);
+    rv = f_closedir(&dp);
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_SCANDIR", "Error during f_closedir in uv_fs_scandir. Code = %d", rv);
     }
@@ -191,19 +191,17 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
     // fills ent with the files present in req->dir (por ejemplo)
     // use f_findfirst and f_findnext to fill ent (containing the paths)
     FRESULT rv;
-    int rv2;
-    loopFSM_t* loopFSM;
-    FF_DIR* dp;
+    FF_DIR dp;
     int fileCounter = 0;
-    FILINFO* fno;
+    FILINFO fno;
 
-    rv = f_findfirst(dp, fno, req->path, "*");
+    rv = f_findfirst(&dp, &fno, req->path, "*");
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_SCANDIR", "Error during f_findfirst in uv_fs_scandir. Code = %d", rv);
         return 0;
     }
 
-    TCHAR* fname = fno->fname;
+    TCHAR* fname = fno.fname;
     char* filePath;
     while(fname != NULL){
         fileCounter++;
@@ -212,15 +210,15 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
         ent[fileCounter - 1].name = filePath;
         ent[fileCounter - 1].type = UV_DIRENT_FILE;
 
-        rv = f_findnext(dp, fno);
+        rv = f_findnext(&dp, &fno);
         if(rv != FR_OK){
             ESP_LOGE("UV_FS_SCANDIR", "Error during f_findnext in uv_fs_scandir. Code = %d", rv);
             return 0;
         }
-        fname = fno->fname;
+        fname = fno.fname;
     }
 
-    rv = f_closedir(dp);
+    rv = f_closedir(&dp);
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_SCANDIR", "Error during f_closedir in uv_fs_scandir. Code = %d", rv);
     }
