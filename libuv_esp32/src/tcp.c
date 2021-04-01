@@ -34,11 +34,12 @@ int
 uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
     int rv;
 
-    tcp->self.loop = loop_s;
+    tcp->loop = loop_s;
     tcp->self.vtbl = &tcp_vtbl;
 
     loopFSM_t* loop = loop_s->loopFSM->user_data;
 
+    tcp->type = UV_TCP;
     tcp->flags = 0;
     tcp->listen_requests = NULL;
     tcp->n_listen_requests = 0;
@@ -109,10 +110,11 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     int rv;
 
     req->req.vtbl = &connect_req_vtbl;
-    req->req.loop = handle->self.loop;
+    req->loop = handle->loop;
     req->cb = cb;
     req->dest_sockaddr = addr;
     req->status = 0;
+    req->type = UV_CONNECT;
 
     /* Add request to the request list */
     rv = uv_insert_tcp(handle, (uv_request_t*)req, CONNECT);
@@ -130,7 +132,7 @@ run_tcp(uv_handle_t* handle){
     // this function checks if any tcp/stream function has been called and tries to execute it
     // if it is executed, creates a request for the function callback
     uv_tcp_t* tcp = (uv_tcp_t*)handle;
-    loopFSM_t* loop = tcp->self.loop->loopFSM->user_data;
+    loopFSM_t* loop = tcp->loop->loopFSM->user_data;
     int rv;
 
     if(tcp->bind){
@@ -201,6 +203,10 @@ run_tcp(uv_handle_t* handle){
             memcpy(&req, (uv_accept_t**)&tcp->accept_requests[i], sizeof(uv_accept_t*));
             // select 
             if(select(tcp->socket, &(tcp->readset), NULL, NULL, NULL)){
+                char addr[16];
+                inet_ntop(AF_INET, &(((struct sockaddr_in *)req->client->src_sockaddr)->sin_addr),
+                    addr, 16);
+                ESP_LOGI("RUN_TCP_ACCEPT", "accepting : %s", addr);
                 socklen_t size = sizeof(struct sockaddr);
                 rv = accept(tcp->socket, req->client->src_sockaddr, &size);
                 if(rv != 0){

@@ -20,7 +20,7 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
         return 1;
     }
 
-    req->req.loop = tcp->self.loop;
+    req->loop = tcp->loop;
     req->req.vtbl = &listen_req_vtbl;
     req->cb = cb;
     req->stream = stream;
@@ -51,7 +51,7 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
         return 1;
     }
 
-    req->req.loop = server->self.loop;
+    req->loop = server->loop;
     req->req.vtbl = &accept_req_vtbl;
     req->server = server;
     req->client = client;
@@ -82,7 +82,7 @@ uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
         return 1;
     }
 
-    req->req.loop = stream->self.loop;
+    req->loop = stream->loop;
     req->req.vtbl = &read_start_req_vtbl;
     req->alloc_cb = alloc_cb;
     req->read_cb = read_cb;
@@ -115,7 +115,7 @@ uv_read_stop(uv_stream_t* stream){
         return 1;
     }
 
-    req->req.loop = stream->self.loop;
+    req->loop = stream->loop;
     req->req.vtbl = &read_stop_req_vtbl;
 
     rv = uv_insert_tcp((uv_tcp_t*)stream, (uv_request_t*)req, READ_STOP);
@@ -140,11 +140,12 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     tcp->write_cb = cb;
 
     req->cb = cb;
-    req->req.loop = handle->self.loop;
+    req->loop = handle->loop;
     req->req.vtbl = &write_req_vtbl;
     req->status = 0;
     req->bufs = bufs;
     req->nbufs = nbufs;
+    req->type = UV_WRITE;
 
     rv = uv_insert_tcp(tcp, (uv_request_t*)req, WRITE);
     if(rv != 0){

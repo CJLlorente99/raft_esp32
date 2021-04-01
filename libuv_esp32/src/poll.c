@@ -8,11 +8,12 @@ static handle_vtbl_t poll_vtbl = {
 
 int
 uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd){
-    handle->self->loop = loop;
-    handle->self->vtbl = &poll_vtbl;
+    handle->loop = loop;
+    handle->self.vtbl = &poll_vtbl;
     handle->events = 0;
     handle->cb = NULL;
     handle->fd = fd;
+    handle->type = UV_POLL;
 
     FD_ZERO(&handle->readset);
     FD_ZERO(&handle->writeset);
@@ -25,7 +26,7 @@ uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd){
 
 int
 uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb){
-    loopFSM_t* loop = handle->self->loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loopFSM->user_data;
     int rv;
     
     handle->cb = cb;
@@ -41,7 +42,7 @@ uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb){
 
 int
 uv_poll_stop(uv_poll_t* poll){
-    loopFSM_t* loop = poll->self->loop->loopFSM->user_data;
+    loopFSM_t* loop = poll->loop->loopFSM->user_data;
     int rv;
 
     rv = uv_remove_handle(loop, (uv_handle_t*)poll);
@@ -54,7 +55,6 @@ uv_poll_stop(uv_poll_t* poll){
 void
 run_poll(uv_handle_t* handle){
     uv_poll_t* poll_handle = (uv_poll_t*) handle;
-    int rv;
     int status = 0;
 
     if(poll_handle->events == UV_READABLE){

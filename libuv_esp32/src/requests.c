@@ -5,7 +5,7 @@ void
 run_connect_req(uv_request_t* req){
     int rv;
     uv_connect_t* connect_req = (uv_connect_t*) req;
-    loopFSM_t* loop = connect_req->req.loop->loopFSM->user_data;
+    loopFSM_t* loop = connect_req->loop->loopFSM->user_data;
 
     connect_req->cb(connect_req, connect_req->status);
 
@@ -21,7 +21,7 @@ void
 run_listen_req(uv_request_t* req){
     int rv;
     uv_listen_t* listen_req = (uv_listen_t*) req;
-    loopFSM_t* loop = req->loop->loopFSM->user_data;
+    loopFSM_t* loop = listen_req->loop->loopFSM->user_data;
 
     listen_req->cb(listen_req->stream, listen_req->status);
 
@@ -35,7 +35,8 @@ run_listen_req(uv_request_t* req){
 void
 run_accept_req(uv_request_t* req){
     int rv;
-    loopFSM_t* loop = req->loop->loopFSM->user_data;
+    uv_accept_t* accept_req = (uv_accept_t*) req;
+    loopFSM_t* loop = accept_req->loop->loopFSM->user_data;
 
     rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
@@ -48,7 +49,7 @@ void
 run_read_start_req(uv_request_t* req){
     int rv;
     uv_read_start_t* read_start_req = (uv_read_start_t*) req;
-    loopFSM_t* loop = req->loop->loopFSM->user_data;
+    loopFSM_t* loop = read_start_req->loop->loopFSM->user_data;
 
     if(read_start_req->alloc_cb){
         uv_buf_t* buf = malloc(sizeof(uv_buf_t));
@@ -72,7 +73,8 @@ run_read_start_req(uv_request_t* req){
 void
 run_read_stop_req(uv_request_t* req){
     int rv;
-    loopFSM_t* loop = req->loop->loopFSM->user_data;
+    uv_read_stop_t* read_stop_req = (uv_read_stop_t*) req;
+    loopFSM_t* loop = read_stop_req->loop->loopFSM->user_data;
 
     rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
@@ -85,7 +87,7 @@ void
 run_write_req(uv_request_t* req){
     int rv;
     uv_write_t* write_req = (uv_write_t*) req;
-    loopFSM_t* loop = req->loop->loopFSM->user_data;
+    loopFSM_t* loop = write_req->loop->loopFSM->user_data;
 
     write_req->cb(write_req, write_req->status);
 

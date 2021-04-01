@@ -15,9 +15,10 @@ static handle_vtbl_t timer_vtbl = {
 int
 uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
 
-    handle->self.loop = loop;
+    handle->loop = loop;
     handle->self.vtbl = &timer_vtbl;
 
+    handle->type = UV_TIMER;
     handle->timeout = 0;
     handle->repeat = 0;
     handle->timer_cb = NULL;
@@ -26,7 +27,7 @@ uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
 
 int
 uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat){
-    loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loopFSM->user_data;
 
     int rv;
     uint32_t clamped_timeout;
@@ -55,7 +56,7 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
 
 int
 uv_timer_stop(uv_timer_t* handle){
-    loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loopFSM->user_data;
     int rv;
 
     rv = uv_remove_handle(loop, (uv_handle_t*)handle);
@@ -91,7 +92,7 @@ uv_timer_again(uv_timer_t* handle){
 void
 run_timer(uv_handle_t* handle){
     uv_timer_t* timer = (uv_timer_t*) handle;
-    loopFSM_t* loop = timer->self.loop->loopFSM->user_data;
+    loopFSM_t* loop = timer->loop->loopFSM->user_data;
     int rv;
 
     if(timer->timeout > loop->time)

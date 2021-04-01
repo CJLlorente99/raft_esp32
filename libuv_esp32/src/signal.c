@@ -28,19 +28,20 @@ static handle_vtbl_t signal_vtbl = {
 int 
 uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){
 
-    handle->self.loop = loop;
+    handle->loop = loop;
     handle->self.vtbl = &signal_vtbl;
 
     handle->intr_bit = 0;
     handle->signal_cb = NULL;
     handle->signum = 0;
+    handle->type = UV_SIGNAL;
 
     return 0;
 }
 
 int
 uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
-    loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loopFSM->user_data;
     int rv = 0;
     esp_err_t err;
     // TODO
@@ -94,7 +95,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 
 int
 uv_signal_stop(uv_signal_t* handle){
-    loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loopFSM->user_data;
     int rv;
     esp_err_t err;
 

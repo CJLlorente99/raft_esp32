@@ -14,8 +14,9 @@ static handle_vtbl_t check_vtbl = {
 
 int
 uv_check_init(uv_loop_t* loop, uv_check_t* check){
-    check->self.loop = loop;
+    check->loop = loop;
     check->self.vtbl = &check_vtbl;
+    check->type = UV_CHECK;
 
     check->cb = NULL;
 
@@ -24,7 +25,7 @@ uv_check_init(uv_loop_t* loop, uv_check_t* check){
 
 int
 uv_check_start(uv_check_t* handle, uv_check_cb cb){
-    loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loopFSM->user_data;
     int rv;
 
     // Check if handle is already present, if it is, just change cb
@@ -50,7 +51,7 @@ uv_check_start(uv_check_t* handle, uv_check_cb cb){
 
 int
 uv_check_stop(uv_check_t* handle){
-    loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loopFSM->user_data;
     int rv;
 
     rv = uv_remove_handle(loop, (uv_handle_t*)handle);

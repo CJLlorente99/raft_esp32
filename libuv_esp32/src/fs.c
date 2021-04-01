@@ -26,7 +26,7 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
         req = malloc(sizeof(uv_fs_t));
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
@@ -50,10 +50,8 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 
 FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb)
 {
-    // TODO
-    // flags indicate mode
-    // mode is always 0
-    FIL* fp = malloc(sizeof(FIL));
+
+    FIL fp;
     FRESULT rv;
     int rv2;
     loopFSM_t* loopFSM;
@@ -61,7 +59,7 @@ FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int m
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
         req = malloc(sizeof(uv_fs_t));
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
@@ -69,20 +67,33 @@ FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int m
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_OPEN", "Error during uv_insert in uv_fs_open");
-            memset(fp, 0, sizeof(FIL));
-            return *fp;
+            return fp;
         }
     }
 
-    rv = f_open(fp, path, flags);
-    if (rv != FR_OK)
-    {
-        ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open. Code = %d", rv);
-        memset(fp, 0, sizeof(FIL));
-        return *fp;
+    // Intentar crear si es que no está creada ya
+    rv = f_open(&fp, path, FA_CREATE_NEW);
+    if((rv != FR_EXIST) && (rv != FR_OK)){
+        ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open during open create. Code = %d", rv);
+        return fp;
+    }
+    
+    if(rv == FR_OK){
+        rv = f_close(&fp);
+        if(rv){
+            ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open during close . Code = %d", rv);
+            return fp;
+        }
     }
 
-    return *fp;
+    rv = f_open(&fp, path, flags);
+    if (rv)
+    {
+        ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open. Code = %x", rv);
+        return fp;
+    }
+
+    return fp;
 }
 
 int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
@@ -95,7 +106,7 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
         req = malloc(sizeof(uv_fs_t));
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
@@ -148,7 +159,7 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
         req = malloc(sizeof(uv_fs_t));
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
@@ -195,20 +206,32 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
     int fileCounter = 0;
     FILINFO fno;
 
+    ESP_LOGI("UV_FS_SCANDIR_NEXT", "f_findfirst");
     rv = f_findfirst(&dp, &fno, req->path, "*");
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_SCANDIR", "Error during f_findfirst in uv_fs_scandir. Code = %d", rv);
         return 0;
     }
 
+    // CODE FAILS HERE WHEN ASSIGNING FILEPATH TO ENT
     TCHAR* fname = fno.fname;
-    char* filePath;
-    while(fname != NULL){
+    char filePath[255];
+    uv_dirent_t entry;
+    while(fname[0] != NULL){
+        strcpy(entry.name[0], "");
+        entry.type = UV_DIRENT_FILE;
+
         fileCounter++;
-        filePath = strcat(req->path, fname);
+        strcat(filePath, req->path);
+        strcat(filePath, "/");
+        strcat(filePath, fname);
+        
+        ESP_LOGI("HEY1","");
+        strcpy(entry.name[0], filePath);
+        ESP_LOGI("HEY2","%s", entry.name);
+
         realloc(ent, fileCounter*sizeof(uv_dirent_t));
-        ent[fileCounter - 1].name = filePath;
-        ent[fileCounter - 1].type = UV_DIRENT_FILE;
+        ent[fileCounter - 1] = entry;
 
         rv = f_findnext(&dp, &fno);
         if(rv != FR_OK){
@@ -237,7 +260,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
@@ -271,7 +294,7 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* ne
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
         req = malloc(sizeof(uv_fs_t));
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
@@ -301,7 +324,7 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
         req = malloc(sizeof(uv_fs_t));
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
@@ -332,7 +355,7 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset,
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
         req = malloc(sizeof(uv_fs_t));
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 
@@ -377,7 +400,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
         req = malloc(sizeof(uv_fs_t));
-        req->req.loop = loop;
+        req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
 

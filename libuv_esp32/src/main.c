@@ -8,7 +8,7 @@ To be verified
 #include "init.h"
 
 // Handle of the wear levelling library instance
-// static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
+static wl_handle_t s_wl_handle;
 
 // SIGNAL TEST
 
@@ -478,9 +478,19 @@ void
 newFileDir1 (uv_signal_t* handle, int signum){
     int rv;
     FIL file;
+    // FILE* file2;
+    FRESULT fr;
     uv_fs_t req;
     const char* path = "dir1/example.txt";
+
+    ESP_LOGI("NEWFILEDIR1", "f_mkdir");
+    fr = f_mkdir("dir1");
+    if((fr != FR_EXIST) && (fr != FR_OK)){
+        ESP_LOGE("NEWFILEDIR1", "f_mkdir : %d", fr);
+    }
+    ESP_LOGI("NEWFILEDIR1", "f_mkdir successful");
     
+    ESP_LOGI("NEWFILEDIR1", "uv_fs_open");
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
 
     uv_buf_t bufs[2];
@@ -489,11 +499,13 @@ newFileDir1 (uv_signal_t* handle, int signum){
     bufs[1].base = "Mensaje de prueba 2\n";
     bufs[1].len = sizeof(bufs[2].base);
 
+    ESP_LOGI("NEWFILEDIR1", "uv_fs_write");
     rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
     if(rv != 0){
         ESP_LOGE("NEWFILEDIR1", "uv_fs_write");
     }
 
+    ESP_LOGI("NEWFILEDIR1", "uv_fs_close");
     rv = uv_fs_close(NULL, &req, file, NULL);
     if(rv != 0){
         ESP_LOGE("NEWFILEDIR1", "uv_fs_close");
@@ -504,9 +516,18 @@ void
 newFileDir2 (uv_signal_t* handle, int signum){
     int rv;
     FIL file;
+    FRESULT fr;
     uv_fs_t req;
     const char* path = "dir2/example.txt";
+
+    ESP_LOGI("NEWFILEDIR2", "f_mkdir");
+    fr = f_mkdir("dir2");
+    if((fr != FR_EXIST) && (fr != FR_OK)){
+        ESP_LOGE("NEWFILEDIR1", "f_mkdir : %d", fr);
+    }
+    ESP_LOGI("NEWFILEDIR2", "f_mkdir successful");
     
+    ESP_LOGI("NEWFILEDIR2", "uv_fs_open");
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
 
     uv_buf_t bufs[2];
@@ -515,11 +536,13 @@ newFileDir2 (uv_signal_t* handle, int signum){
     bufs[1].base = "Mensaje de prueba 2\n";
     bufs[1].len = sizeof(bufs[2].base);
 
+    ESP_LOGI("NEWFILEDIR2", "uv_fs_write");
     rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
     if(rv != 0){
         ESP_LOGE("NEWFILEDIR2", "uv_fs_write");
     }
 
+    ESP_LOGI("NEWFILEDIR2", "uv_fs_close");
     rv = uv_fs_close(NULL, &req, file, NULL);
     if(rv != 0){
         ESP_LOGE("NEWFILEDIR2", "uv_fs_close");
@@ -533,17 +556,20 @@ info(uv_signal_t* handle, int signum){
     FIL file;
     FRESULT fr;
     uv_fs_t req;
-    const char* path1 = "dir1/example.txt";
+    const char* path1 = "dir1";
     uv_dirent_t* ent = NULL;
 
+    ESP_LOGI("INFO", "uv_fs_scandir");
     n = uv_fs_scandir(NULL, &req, path1, 0, NULL);
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
+    ESP_LOGI("INFO", "uv_fs_scandir_next");
     rv = uv_fs_scandir_next(&req, ent);
     if(rv != 0){
         ESP_LOGE("INFO", "uv_fs_scandir_next");
     }
 
+    ESP_LOGI("INFO", "print results");
     uv_dirent_t dirent;
     char* buf;
     UINT br; 
@@ -567,16 +593,19 @@ info(uv_signal_t* handle, int signum){
         }
     }
 
-    const char* path2 = "dir2/example.txt";
+    const char* path2 = "dir2";
 
+    ESP_LOGI("INFO", "uv_fs_scandir");
     n = uv_fs_scandir(NULL, &req, path2, 0, NULL);
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
+    ESP_LOGI("INFO", "uv_fs_scandir_next");
     rv = uv_fs_scandir_next(&req, ent);
     if(rv != 0){
         ESP_LOGE("INFO", "uv_fs_scandir_next");
     }
 
+    ESP_LOGI("INFO", "print results");
     for(int i = 0; i < n; i++){
         dirent = ent[i];
         ESP_LOGI("INFO", "File name is %s", dirent.name);
@@ -696,30 +725,32 @@ void app_main(void)
     // either use lwip to disable dhcp and set static ip
     // or esp_netif to do the same
 
-    // ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
+    ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
 
-    // FATFS* fatfs = malloc(sizeof(FATFS));
-    // FRESULT fr;
-    // const esp_vfs_fat_mount_config_t mount_config = {
-    //         .max_files = 5,
-    //         .format_if_mount_failed = true,
-    //         .allocation_unit_size = CONFIG_WL_SECTOR_SIZE
-    // };
-    // esp_err_t err = esp_vfs_fat_spiflash_mount("/spiflash", "storage", &mount_config, &s_wl_handle);
-    // if (err != ESP_OK) {
-    //     ESP_LOGE("APP_MAIN", "Failed to mount FATFS (%s)", esp_err_to_name(err));
-    //     return;
-    // }
+    const esp_vfs_fat_mount_config_t mount_config = {
+            .max_files = 5,
+            .format_if_mount_failed = true,
+            .allocation_unit_size = CONFIG_WL_SECTOR_SIZE
+    };
+    esp_err_t err = esp_vfs_fat_spiflash_mount("/spiflash", "fatvfs", &mount_config, &s_wl_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE("APP_MAIN", "Failed to mount FATFS (%s)", esp_err_to_name(err));
+        return;
+    }
 
-    // fr = f_mount(fatfs, NULL, 0);
-    // if(fr != 0){
-    //     ESP_LOGE("APP_MAIN", "f_mount error : %d", fr);
+    ESP_LOGI("APP_MAIN", "FAT filesystem mounted succesfully");
+
+    // ESP_LOGI("NEWFILEDIR1", "f_mkdir");
+    // fr = f_mkdir("dir1");
+    // if((fr != FR_EXIST) && (fr != FR_OK)){
+    //     ESP_LOGE("NEWFILEDIR1", "f_mkdir : %x", fr);
     // }
+    // ESP_LOGI("NEWFILEDIR1", "f_mkdir successful");
 
     // xTaskCreate(main_signal, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_check, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 4096, NULL, 5, NULL);
-    xTaskCreate(main_tcp_server, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_tcp_server, "startup", 4096, NULL, 5, NULL);
     // xTaskCreate(main_tcp_client, "startup", 4096, NULL, 5, NULL);
-    // xTaskCreate(main_fs, "startup", 4096, NULL, 5, NULL);
+    xTaskCreate(main_fs, "startup", 16384, NULL, 5, NULL);
 }

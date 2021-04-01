@@ -17,8 +17,8 @@
 #include "ff.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
+#include "esp_vfs.h"
 #include "esp_system.h"
-// #include "esp_vfs.h"
 
 /// Some global constants
 
@@ -26,6 +26,11 @@
 #define LOOP_RATE_MS 20
 
 // fs flags
+
+#define FF_FS_READONLY  0
+#define FF_FS_MINIMIZE  0
+#define CONFIG_FATFS_LFN_STACK   1
+#define CONFIG_FATFS_MAX_LFN      1
 
 #define UV_FS_O_APPEND FA_OPEN_APPEND
 #define UV_FS_O_CREAT   FA_OPEN_ALWAYS
@@ -70,6 +75,51 @@ typedef enum {
     UV_DIRENT_UNKNOWN,
     UV_DIRENT_FILE
 } uv_dirent_type_t;
+
+typedef enum {
+    UV_UNKNOWN_REQ = 0,
+    UV_REQ,
+    UV_CONNECT,
+    UV_WRITE,
+    UV_SHUTDOWN,
+    UV_UDP_SEND,
+    UV_FS,
+    UV_WORK,
+    UV_GETADDRINFO,
+    UV_GETNAMEINFO,
+    UV_RANDOM,
+    UV_ACCEPT,
+    UV_FS_EVENT_REQ,
+    UV_POLL_REQ,
+    UV_PROCESS_EXIT,
+    UV_READ,
+    UV_UDP_RECV,
+    UV_WAKEUP,
+    UV_SIGNAL_REQ,
+    UV_REQ_TYPE_MAX
+} uv_req_type;
+
+typedef enum {
+    UV_UNKNOWN_HANDLE = 0,
+    UV_ASYNC,
+    UV_CHECK,
+    UV_FS_EVENT,
+    UV_FS_POLL,
+    UV_HANDLE,
+    UV_IDLE,
+    UV_NAMED_PIPE,
+    UV_POLL,
+    UV_PREPARE,
+    UV_PROCESS,
+    UV_STREAM,
+    UV_TCP,
+    UV_TIMER,
+    UV_TTY,
+    UV_UDP,
+    UV_SIGNAL,
+    UV_FILE,
+    UV_HANDLE_TYPE_MAX
+} uv_handle_type;
 
 /// Declaration
 
@@ -125,7 +175,6 @@ typedef void (*uv_fs_cb)(uv_fs_t* req);
 // handle "class"
 struct uv_handle_s {
     handle_vtbl_t* vtbl;
-    uv_loop_t* loop;
 };
 
 // virtual table for every handle
@@ -139,7 +188,6 @@ void handle_run(uv_handle_t* handle);
 // request "class"
 struct uv_request_s {
     request_vtbl_t* vtbl;
-    uv_loop_t* loop;
 };
 
 // virtual table for every request
@@ -151,9 +199,26 @@ struct request_vtbl_s {
 void request_run(uv_request_t* handle);
 
 /// Types definition
+/* Various */
+struct uv_dirent_s {
+    char name[255];
+    uv_dirent_type_t type;
+};
+
+struct uv_stat_s {
+    uint64_t st_size;
+};
+
+/* Requests */
 
 struct uv_write_s {
     uv_request_t req;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_req_type type;
+    /* private */
+    uv_loop_t* loop;
     uv_write_cb cb;
     int status;
     const uv_buf_t* bufs;
@@ -162,6 +227,12 @@ struct uv_write_s {
 
 struct uv_connect_s {
     uv_request_t req;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_req_type type;
+    /* private */
+    uv_loop_t* loop;
     const struct sockaddr* dest_sockaddr;
     uv_connect_cb cb;
     int status;
@@ -169,6 +240,7 @@ struct uv_connect_s {
 
 struct uv_listen_s {
     uv_request_t req;
+    uv_loop_t* loop;
     uv_stream_t* stream;
     uv_connection_cb cb;
     int status;
@@ -176,12 +248,14 @@ struct uv_listen_s {
 
 struct uv_accept_s {
     uv_request_t req;
+    uv_loop_t* loop;
     uv_stream_t* server;
     uv_stream_t* client;
 };
 
 struct uv_read_start_s {
     uv_request_t req;
+    uv_loop_t* loop;
     uv_stream_t* stream;
     uv_alloc_cb alloc_cb;
     uv_read_cb read_cb;
@@ -192,26 +266,32 @@ struct uv_read_start_s {
 
 struct uv_read_stop_s {
     uv_request_t req;
-};
-
-struct uv_dirent_s {
-    const char* name;
-    uv_dirent_type_t type;
-};
-
-struct uv_stat_s {
-    uint64_t st_size;
+    uv_loop_t* loop;
 };
 
 struct uv_fs_s {
     uv_request_t req;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_req_type type;
+    /* private */
+    uv_loop_t* loop;
     uv_fs_cb cb;
     uv_stat_t statbuf;
     const char* path;
 };
 
+/* Handles */
+
 struct uv_poll_s {
-    uv_handle_t* self;
+    uv_handle_t self;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_loop_t* loop;
+    uv_handle_type type;
+    /* private */
     uv_poll_cb cb;
     int events;
     int fd;
@@ -222,11 +302,23 @@ struct uv_poll_s {
 
 struct uv_check_s {
     uv_handle_t self;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_loop_t* loop;
+    uv_handle_type type;
+    /* private */
     uv_check_cb cb;
 };
 
 struct uv_tcp_s {
     uv_handle_t self;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_loop_t* loop;
+    uv_handle_type type;
+    /* private */
     uint64_t flags;
     uv_read_cb read_cb;
     uv_alloc_cb alloc_cb;
@@ -242,6 +334,7 @@ struct uv_tcp_s {
     
     int bind : 1;
 
+    // Esto se puede cambiar a un solo uv_requests_tcp_t** que sea un struct con uv_request_t y tipo (por ejemplo)
     uv_request_t** connect_requests;
     int n_connect_requests;
 
@@ -268,6 +361,12 @@ struct uv_buf_s {
 
 struct uv_timer_s {
     uv_handle_t self;
+     /* public */
+    void* data;
+    /* read-only */
+    uv_loop_t* loop;
+    uv_handle_type type;
+    /* private */
     uv_timer_cb timer_cb;
     uint32_t timeout;
     uint32_t repeat;
@@ -275,12 +374,21 @@ struct uv_timer_s {
 
 struct uv_signal_s {
     uv_handle_t self;
+     /* public */
+    void* data;
+    /* read-only */
+    uv_loop_t* loop;
+    uv_handle_type type;
+    /* private */
     uv_signal_cb signal_cb;
     int signum; // indicates pin
     uint64_t intr_bit : 1;
 };
 
 struct uv_loop_s {
+    /* User data */
+    void* data;
+    /* Private */
     fsm_t* loopFSM;
 };
 
