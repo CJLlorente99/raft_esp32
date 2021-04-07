@@ -154,7 +154,8 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     FF_DIR dp;
     FILINFO fno;
 
-    req->path = path; 
+    req->path = malloc(sizeof(path));
+    strcpy(req->path, path); 
     
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
@@ -166,7 +167,7 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
         rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
         if (rv2 != 0)
         {
-            ESP_LOGE("UV_FS_OPEN", "Error during uv_insert in uv_fs_open");
+            ESP_LOGE("UV_FS_SCANDIR", "Error during uv_insert in uv_fs_open");
             return 1;
         }
     }
@@ -213,25 +214,23 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
         return 0;
     }
 
-    // CODE FAILS HERE WHEN ASSIGNING FILEPATH TO ENT
     TCHAR* fname = fno.fname;
-    char filePath[255];
     uv_dirent_t entry;
     while(fname[0] != NULL){
-        strcpy(entry.name[0], "");
         entry.type = UV_DIRENT_FILE;
+        entry.name = malloc(sizeof(fname) + sizeof("/") + sizeof(req->path) + 1);
 
         fileCounter++;
-        strcat(filePath, req->path);
-        strcat(filePath, "/");
-        strcat(filePath, fname);
+        strcpy(entry.name, req->path);
+        strcat(entry.name, "/");
+        strcat(entry.name, fname);
         
-        ESP_LOGI("HEY1","");
-        strcpy(entry.name[0], filePath);
-        ESP_LOGI("HEY2","%s", entry.name);
-
         realloc(ent, fileCounter*sizeof(uv_dirent_t));
-        ent[fileCounter - 1] = entry;
+        // FALLA AQUI
+        ESP_LOGI("UV_FS_SCANDIR_NEXT","%s %d", entry.name, entry.type);
+        memcpy(&(ent[fileCounter-1]), &entry, sizeof(uv_dirent_t));
+        ////////////////////////
+        ESP_LOGI("UV_FS_SCANDIR_NEXT","");
 
         rv = f_findnext(&dp, &fno);
         if(rv != FR_OK){
@@ -416,6 +415,42 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     if (rv != FR_OK)
     {
         ESP_LOGE("UV_FS_UNLINK", "Error in uv_fs_unlink. Code = %d", rv);
+        return 1;
+    }
+
+    return 0;
+}
+
+/*  raft implementation does not use uv_fs_read and uses posix read. In this case
+    use of uv_fs_read is needed */
+//  raft only uses read to read into 1 buffer and no offset
+int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb){
+    FRESULT rv;
+    int rv2;
+    loopFSM_t* loopFSM;
+
+    uv_buf_t buf = bufs[0];
+    uint32_t br;
+
+    if(loop && cb){
+        loopFSM = loop->loopFSM->user_data;
+        req = malloc(sizeof(uv_fs_t));
+        req->loop = loop;
+        req->req.vtbl = &fs_req_vtbl;
+        req->cb = cb;
+
+        rv2 = uv_insert_request(loopFSM, (uv_request_t*)req);
+        if (rv2 != 0)
+        {
+            ESP_LOGE("UV_FS_READ", "Error during uv_insert in uv_fs_read");
+            return 1;
+        }
+    }
+
+    rv = f_read(&file, buf.base, buf.len, &br);
+    if (rv != FR_OK)
+    {
+        ESP_LOGE("UV_FS_READ", "Error in uv_fs_read. Code = %d", rv);
         return 1;
     }
 

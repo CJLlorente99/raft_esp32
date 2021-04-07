@@ -201,7 +201,7 @@ void request_run(uv_request_t* handle);
 /// Types definition
 /* Various */
 struct uv_dirent_s {
-    char name[255];
+    char* name;
     uv_dirent_type_t type;
 };
 
@@ -279,7 +279,7 @@ struct uv_fs_s {
     uv_loop_t* loop;
     uv_fs_cb cb;
     uv_stat_t statbuf;
-    const char* path;
+    char* path;
 };
 
 /* Handles */

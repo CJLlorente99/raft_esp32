@@ -719,12 +719,11 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    // Init WiFi with static IP
     wifi_init(LOCALIP);
     // wifi_init(CLIENTIP);
-    // is it necessary to change to static IP from dhcp?
-    // either use lwip to disable dhcp and set static ip
-    // or esp_netif to do the same
 
+    // Mount FAT-VFS
     ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
 
     const esp_vfs_fat_mount_config_t mount_config = {
@@ -740,17 +739,10 @@ void app_main(void)
 
     ESP_LOGI("APP_MAIN", "FAT filesystem mounted succesfully");
 
-    // ESP_LOGI("NEWFILEDIR1", "f_mkdir");
-    // fr = f_mkdir("dir1");
-    // if((fr != FR_EXIST) && (fr != FR_OK)){
-    //     ESP_LOGE("NEWFILEDIR1", "f_mkdir : %x", fr);
-    // }
-    // ESP_LOGI("NEWFILEDIR1", "f_mkdir successful");
-
-    // xTaskCreate(main_signal, "startup", 4096, NULL, 5, NULL);
-    // xTaskCreate(main_check, "startup", 4096, NULL, 5, NULL);
-    // xTaskCreate(main_timer, "startup", 4096, NULL, 5, NULL);
-    // xTaskCreate(main_tcp_server, "startup", 4096, NULL, 5, NULL);
-    // xTaskCreate(main_tcp_client, "startup", 4096, NULL, 5, NULL);
+    // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_check, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_tcp_server, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_tcp_client, "startup", 16384, NULL, 5, NULL);
     xTaskCreate(main_fs, "startup", 16384, NULL, 5, NULL);
 }

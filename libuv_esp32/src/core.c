@@ -2,8 +2,14 @@
 
 #define LED_DEBUG_PORT 5
 
-// TODO
-// Creo que esto no esta bien. Debería ser void*** pointer?
+/*  Se podría cambiar todo por 
+    loop->active_handlers = realloc(loop->active_handlers, i * sizeof(uv_handle_t*));
+    if(!loop->active_handlers){
+        ESP_LOGE("UV_INSERT_HANDLE", "Error pointer is NULL after malloc in uv_insert_handle");
+        return 1;
+    }
+    memcpy(&(loop->active_handlers[i-1]), &handle, sizeof(uv_handle_t*));
+*/
 
 int
 uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle){
