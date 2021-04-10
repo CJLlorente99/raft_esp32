@@ -130,7 +130,7 @@ typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_tcp_s uv_tcp_t;
-typedef struct uv_tcp_s uv_stream_t;
+typedef struct uv_stream_s uv_stream_t;
 typedef struct uv_buf_s uv_buf_t;
 typedef struct uv_check_s uv_check_t;
 typedef struct uv_handle_s uv_handle_t;
@@ -201,12 +201,12 @@ void request_run(uv_request_t* handle);
 /// Types definition
 /* Various */
 struct uv_dirent_s {
-    char* name;
+    char name[255];
     uv_dirent_type_t type;
 };
 
 struct uv_stat_s {
-    uint64_t st_size;
+    uint32_t st_size;
 };
 
 /* Requests */
@@ -223,6 +223,7 @@ struct uv_write_s {
     int status;
     const uv_buf_t* bufs;
     int nbufs;
+    uv_stream_t* stream;
 };
 
 struct uv_connect_s {
@@ -262,6 +263,7 @@ struct uv_read_start_s {
     uv_buf_t* buf;
     ssize_t nread;
     int is_alloc : 1;
+    int all;
 };
 
 struct uv_read_stop_s {
@@ -311,6 +313,24 @@ struct uv_check_s {
     uv_check_cb cb;
 };
 
+struct uv_stream_s {
+    uv_handle_t self;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_loop_t* loop;
+    uv_handle_type type;
+    /* private */
+    uv_read_cb read_cb;
+    uv_alloc_cb alloc_cb;
+    uv_tcp_t* server;
+    int socket;
+    fd_set readset;
+    fd_set writeset;
+    fd_set errorset;
+};
+
+
 struct uv_tcp_s {
     uv_handle_t self;
     /* public */
@@ -319,18 +339,21 @@ struct uv_tcp_s {
     uv_loop_t* loop;
     uv_handle_type type;
     /* private */
-    uint64_t flags;
     uv_read_cb read_cb;
     uv_alloc_cb alloc_cb;
+    uv_tcp_t* server;
+    int socket;
+    fd_set readset;
+    fd_set writeset;
+    fd_set errorset;
+
+    /* tcp-only */
+    const struct sockaddr* src_sockaddr;
+    uint64_t flags;
     uv_connection_cb connection_cb;
     uv_close_cb close_cb;
     uv_connect_cb connect_cb;
     uv_write_cb write_cb;
-    int socket;
-    const struct sockaddr* src_sockaddr;
-    fd_set readset;
-    fd_set writeset;
-    fd_set errorset;
     
     int bind : 1;
 
@@ -355,7 +378,7 @@ struct uv_tcp_s {
 };
 
 struct uv_buf_s {
-    char* base;
+    char base[4096];
     size_t len;
 };
 

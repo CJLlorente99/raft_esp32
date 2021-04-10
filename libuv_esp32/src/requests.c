@@ -53,15 +53,20 @@ run_read_start_req(uv_request_t* req){
 
     if(read_start_req->alloc_cb){
         uv_buf_t* buf = malloc(sizeof(uv_buf_t));
+        buf->len = 4*1024;
 
         read_start_req->buf = buf;
-        read_start_req->alloc_cb((uv_handle_t*) read_start_req->stream, 64*1024, buf);
+        read_start_req->alloc_cb((uv_handle_t*) read_start_req->stream, 4*1024, buf);
         read_start_req->is_alloc = 1;
 
         read_start_req->alloc_cb = NULL; // allocation should only be done once per read_start call
     }
-
-    read_start_req->read_cb(read_start_req->stream, read_start_req->nread, read_start_req->buf);
+    
+    if(read_start_req->all == 0){
+        read_start_req->read_cb(read_start_req->stream, read_start_req->nread, read_start_req->buf);
+        if(read_start_req->nread == read_start_req->buf->len)
+            read_start_req->all = 1;
+    }
 
     rv = uv_remove_request(loop, (uv_request_t*)req);
     if(rv != 0){
@@ -87,7 +92,7 @@ void
 run_write_req(uv_request_t* req){
     int rv;
     uv_write_t* write_req = (uv_write_t*) req;
-    loopFSM_t* loop = write_req->loop->loopFSM->user_data;
+    loopFSM_t* loop = write_req->stream->server->loop->loopFSM->user_data;
 
     write_req->cb(write_req, write_req->status);
 

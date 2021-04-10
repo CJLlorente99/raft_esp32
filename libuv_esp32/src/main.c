@@ -252,38 +252,29 @@ main_timer(void* ignore){
 uv_tcp_t* tcp_server;
 
 void
-connection_cb(uv_stream_t* server, int status){
-    int rv;
-    ESP_LOGI("CONNECTION_CB", "Connection callback has been called with status = %d", status);
-    
-    struct sockaddr_in client_addr;
-    client_addr.sin_family = AF_INET;
-    client_addr.sin_addr.s_addr = inet_addr(CLIENTIP);
-    client_addr.sin_port = htons(5000);
-
-    uv_stream_t* client = malloc(sizeof(uv_stream_t));
-    memset(client, 0, sizeof(uv_stream_t));
-    client->src_sockaddr = (struct sockaddr*)&client_addr;
-    rv = uv_accept(server, client);
-    if(rv != 0){
-        ESP_LOGE("CONNECTION_CB", "Error while trying to accept");
-    }
-}
-
-void
 write_cb(uv_write_t* req, int status){
     ESP_LOGI("WRITE_CB", "Write callback has been called with status = %d", status);
 }
 
 void
-tcp_timer_write_cb(uv_timer_t* handle){
+connection_cb(uv_stream_t* server, int status){
     int rv;
-    uv_write_t* req = malloc(sizeof(uv_write));
-    uv_buf_t buf;
-    buf.base = "Saludos";
-    buf.len = sizeof(buf.base);
+    ESP_LOGI("CONNECTION_CB", "Connection callback has been called with status = %d", status);
 
-    rv = uv_write(req, (uv_stream_t*)tcp_server, &buf, 1, write_cb);
+    uv_stream_t* client = malloc(sizeof(uv_stream_t));
+    memset(client, 0, sizeof(uv_stream_t));
+    rv = uv_accept(server, client);
+    if(rv != 0){
+        ESP_LOGE("CONNECTION_CB", "Error while trying to accept");
+    }
+
+    uv_write_t* req = malloc(sizeof(uv_write_t));
+    uv_buf_t* buf = malloc(sizeof(uv_buf_t));
+    memset(buf, 0, sizeof(uv_buf_t));
+    strcpy(buf->base, "Saludos");
+    buf->len = 4096;
+
+    rv = uv_write(req, (uv_stream_t*)client, buf, 1, write_cb);
     if(rv != 0){
         ESP_LOGE("TCP_TIMER_CB","Error while trying to write");
     }
@@ -332,22 +323,6 @@ main_tcp_server(void* ignore){
 
     ESP_LOGI("UV_LISTEN", "uv_listen success");
 
-    uv_timer_t* timer = malloc(sizeof(uv_timer_t));
-    
-    rv = uv_timer_init(loop, timer);
-    if(rv != 0){
-        ESP_LOGE("TIMER_INIT", "Error uv_timer_init in main_tcp_server");
-    }
-
-    ESP_LOGI("TIMER_INIT", "Second uv_timer_init success");
-
-    rv = uv_timer_start(timer, tcp_timer_write_cb, 0, 2000);
-    if(rv != 0){
-        ESP_LOGE("TIMER_START", "Error in first uv_timer_start in main_timer");
-    }
-
-    ESP_LOGI("TIMER_START", "Second uv_timer_start success");
-
     rv = uv_run(loop);
     if(rv != 0){
         ESP_LOGE("UV_RUN", "Error in uv_run in main_timer");
@@ -375,6 +350,8 @@ read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf){
         ESP_LOGI("READ_CB", "Everything received = %s", buf->base);
         uv_read_stop(stream);
         return;
+    } else if(nread == 0){ // more info is going to be read, well be called afterwards
+        return;
     } else if(nread < buf->len){ // more info is going to be read, well be called afterwards
         return;
     }
@@ -382,12 +359,8 @@ read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf){
 
 void
 connect_cb(uv_connect_t* req, int status){
-    ESP_LOGI("CONNECT_CB", "Entered connect_cb with status = %d", status);
-}
-
-void
-tcp_timer_read_cb(uv_timer_t* handle){
     int rv;
+    ESP_LOGI("CONNECT_CB", "Entered connect_cb with status = %d", status);
 
     rv = uv_read_start((uv_stream_t*)tcp_client, alloc_cb, read_cb);
     if(rv != 0){
@@ -443,21 +416,8 @@ main_tcp_client(void* ignore){
         ESP_LOGE("TCP_CONNECT", "Error in uv_tcp_connect in main_tcp_client");
     }
 
-    ESP_LOGI("TCP_CONNECT", "uv_tcp_connect success");
+    ESP_LOGI("TCP_CONNECT", "uv_tcp_connect success");   
 
-    uv_timer_t* timer = malloc(sizeof(uv_timer_t));
-    
-    rv = uv_timer_init(loop, timer);
-    if(rv != 0){
-        ESP_LOGE("TIMER_INIT", "Error uv_timer_init in main_tcp_server");
-    }
-
-    ESP_LOGI("TIMER_INIT", "Second uv_timer_init success");
-
-    rv = uv_timer_start(timer, tcp_timer_read_cb, 0, 2000);
-    if(rv != 0){
-        ESP_LOGE("TIMER_START", "Error in first uv_timer_start in main_timer");
-    }
 
     rv = uv_run(loop);
     if(rv != 0){
@@ -494,15 +454,20 @@ newFileDir1 (uv_signal_t* handle, int signum){
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
 
     uv_buf_t bufs[2];
-    bufs[0].base = "Mensaje de prueba\n";
-    bufs[0].len = sizeof(bufs[1].base);
-    bufs[1].base = "Mensaje de prueba 2\n";
-    bufs[1].len = sizeof(bufs[2].base);
+    strcpy(bufs[0].base, "Mensaje de prueba\n");
+    bufs[0].len = sizeof(bufs[0].base);
+    strcpy(bufs[1].base, "Mensaje de prueba2\n");
+    bufs[1].len = sizeof(bufs[1].base);
 
     ESP_LOGI("NEWFILEDIR1", "uv_fs_write");
     rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
     if(rv != 0){
         ESP_LOGE("NEWFILEDIR1", "uv_fs_write");
+    }
+
+    rv = uv_fs_fsync(NULL, &req, file, NULL);
+    if(rv != 0){
+        ESP_LOGE("NEWFILEDIR1", "uv_fs_fsync");
     }
 
     ESP_LOGI("NEWFILEDIR1", "uv_fs_close");
@@ -531,10 +496,10 @@ newFileDir2 (uv_signal_t* handle, int signum){
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
 
     uv_buf_t bufs[2];
-    bufs[0].base = "Mensaje de prueba\n";
-    bufs[0].len = sizeof(bufs[1].base);
-    bufs[1].base = "Mensaje de prueba 2\n";
-    bufs[1].len = sizeof(bufs[2].base);
+    strcpy(bufs[0].base, "Mensaje de prueba\n");
+    bufs[0].len = sizeof(bufs[0].base);
+    strcpy(bufs[1].base, "Mensaje de prueba2\n");
+    bufs[1].len = sizeof(bufs[1].base);
 
     ESP_LOGI("NEWFILEDIR2", "uv_fs_write");
     rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
@@ -556,33 +521,32 @@ info(uv_signal_t* handle, int signum){
     FIL file;
     FRESULT fr;
     uv_fs_t req;
+    uv_dirent_t ent;
     const char* path1 = "dir1";
-    uv_dirent_t* ent = NULL;
 
     ESP_LOGI("INFO", "uv_fs_scandir");
     n = uv_fs_scandir(NULL, &req, path1, 0, NULL);
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
-    ESP_LOGI("INFO", "uv_fs_scandir_next");
-    rv = uv_fs_scandir_next(&req, ent);
-    if(rv != 0){
-        ESP_LOGE("INFO", "uv_fs_scandir_next");
-    }
-
     ESP_LOGI("INFO", "print results");
-    uv_dirent_t dirent;
     char* buf;
     UINT br; 
     for(int i = 0; i < n; i++){
-        dirent = ent[i];
-        ESP_LOGI("INFO", "File name is %s", dirent.name);
-        file = uv_fs_open(NULL, &req, dirent.name, UV_FS_O_RDONLY, 0, NULL);
-        rv = uv_fs_stat(NULL, &req, dirent.name, NULL);
+        ESP_LOGI("INFO", "uv_fs_scandir_next");
+        rv = uv_fs_scandir_next(&req, &ent);
+        if(rv != 0){
+            ESP_LOGE("INFO", "uv_fs_scandir_next");
+        }
+        ESP_LOGI("INFO", "File name is %s", ent.name);
+        file = uv_fs_open(NULL, &req, ent.name, UV_FS_O_RDONLY, 0, NULL);
+        rv = uv_fs_stat(NULL, &req, ent.name, NULL);
         fr = f_read(&file, &buf, req.statbuf.st_size, &br);
         if(fr != FR_OK){
             ESP_LOGE("INFO", "f_read");
         }
 
+        ESP_LOGI("INFO", "Tamaño %u", req.statbuf.st_size);
+        ESP_LOGI("INFO", "Caracteres a leer %u", br);
         for(int j = 0; j < br; j++){
             ESP_LOGI("INFO", "%c", buf[j]);
         }
@@ -599,23 +563,23 @@ info(uv_signal_t* handle, int signum){
     n = uv_fs_scandir(NULL, &req, path2, 0, NULL);
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
-    ESP_LOGI("INFO", "uv_fs_scandir_next");
-    rv = uv_fs_scandir_next(&req, ent);
-    if(rv != 0){
-        ESP_LOGE("INFO", "uv_fs_scandir_next");
-    }
-
     ESP_LOGI("INFO", "print results");
     for(int i = 0; i < n; i++){
-        dirent = ent[i];
-        ESP_LOGI("INFO", "File name is %s", dirent.name);
-        file = uv_fs_open(NULL, &req, dirent.name, UV_FS_O_RDONLY, 0, NULL);
-        rv = uv_fs_stat(NULL, &req, dirent.name, NULL);
+        ESP_LOGI("INFO", "uv_fs_scandir_next");
+        rv = uv_fs_scandir_next(&req, &ent);
+        if(rv != 0){
+            ESP_LOGE("INFO", "uv_fs_scandir_next");
+        }
+        ESP_LOGI("INFO", "File name is %s", ent.name);
+        file = uv_fs_open(NULL, &req, ent.name, UV_FS_O_RDONLY, 0, NULL);
+        rv = uv_fs_stat(NULL, &req, ent.name, NULL);
         fr = f_read(&file, &buf, req.statbuf.st_size, &br);
         if(fr != FR_OK){
             ESP_LOGE("INFO", "f_read");
         }
         
+        ESP_LOGI("INFO", "Tamaño %u", req.statbuf.st_size);
+        ESP_LOGI("INFO", "Caracteres a leer %u", br);
         for(int j = 0; j < br; j++){
             ESP_LOGI("INFO", "%c", buf[j]);
         }
@@ -720,8 +684,8 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // Init WiFi with static IP
-    wifi_init(LOCALIP);
-    // wifi_init(CLIENTIP);
+    // wifi_init(LOCALIP);
+    wifi_init(CLIENTIP);
 
     // Mount FAT-VFS
     ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
@@ -743,6 +707,6 @@ void app_main(void)
     // xTaskCreate(main_check, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_tcp_server, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_tcp_client, "startup", 16384, NULL, 5, NULL);
-    xTaskCreate(main_fs, "startup", 16384, NULL, 5, NULL);
+    xTaskCreate(main_tcp_client, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
 }

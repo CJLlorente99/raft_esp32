@@ -1,28 +1,5 @@
 #include "uv.h"
 
-/*
-    usar librería FreeRTOS+TCP?
-
-    En vez de centrarme tanto en como se hace en el libuv original. Sería posible
-    hacerlo con una estructura reactor.
-
-    uv_tcp
-        tcp_init -> inicializa el reactor (se llama desde el loop base)
-        tcp_close -> quitar el reactor del loop base
-        tcp_bind -> crea un socket y lo une a una direccion (esta info se añade en el objeto tcp)
-        tcp_connect -> conecta el socket con una direccion (añadir conexiones a un objeto tcp)
-
-    uv_stream
-        listen -> habilitar la escucha de nuevas conexiones entrantes (habilita que el reactor mire una conexion). Se guardan "backlog" conexiones
-        accept -> acepta las conexiones de listen (habilita que el rector comience a aceptar)
-        read_start -> comienza a leer hasta que no hay más que leer o read_stop es llamado (habilita al reactor a leer)
-        read_stop -> parar de leer (deshabilita la lectura)
-        write -> escribir
-*/
-
-// Even though espconn has various function to attach cb to some events, this would imply asyncronous beahviour.
-// Therefore cb calls will be managed differently
-
 void run_tcp(uv_handle_t* handle);
 
 // virtual table for tcp handlers
@@ -134,6 +111,17 @@ run_tcp(uv_handle_t* handle){
     uv_tcp_t* tcp = (uv_tcp_t*)handle;
     loopFSM_t* loop = tcp->loop->loopFSM->user_data;
     int rv;
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+
+    // Refresh fd
+    FD_ZERO(&(tcp->readset));
+    FD_ZERO(&(tcp->writeset));
+    FD_ZERO(&(tcp->errorset));
+    FD_SET(tcp->socket, &(tcp->readset));
+    FD_SET(tcp->socket, &(tcp->writeset));
+    FD_SET(tcp->socket, &(tcp->errorset));
 
     if(tcp->bind){
         rv = bind(tcp->socket, tcp->src_sockaddr, sizeof(struct sockaddr));
@@ -202,17 +190,27 @@ run_tcp(uv_handle_t* handle){
             uv_accept_t* req;
             memcpy(&req, (uv_accept_t**)&tcp->accept_requests[i], sizeof(uv_accept_t*));
             // select 
-            if(select(tcp->socket, &(tcp->readset), NULL, NULL, NULL)){
-                char addr[16];
-                inet_ntop(AF_INET, &(((struct sockaddr_in *)req->client->src_sockaddr)->sin_addr),
-                    addr, 16);
-                ESP_LOGI("RUN_TCP_ACCEPT", "accepting : %s", addr);
-                socklen_t size = sizeof(struct sockaddr);
-                rv = accept(tcp->socket, req->client->src_sockaddr, &size);
-                if(rv != 0){
+            FD_ZERO(&(tcp->readset));
+            FD_SET(tcp->socket, &(tcp->readset));
+
+            if(select(tcp->socket + 1, &(tcp->readset), NULL, NULL, &tv)){
+                rv = accept(tcp->socket, NULL, NULL);
+                // TODO 
+                // añadir nuevo fd (que es la salida del accept)
+                // que hacer?
+                // 1) ir iterando por los sockets haciendo select
+                // https://www.tenouk.com/Module41.html
+                if(rv == -1){
                     ESP_LOGE("RUN_TCP_ACCEPT", "Error during accept in run tcp: errno %d", errno);
                     return;
                 }
+                char addr;
+                struct sockaddr name;
+                socklen_t len;
+                getpeername(rv,&name,&len);
+                inet_ntop(AF_INET, &(((struct sockaddr_in*)&name)->sin_addr), &addr, len);
+                ESP_LOGI("RUN_TCP_ACCEPT", "accepting : %s", &addr);
+                req->client->socket = rv;
                 // take out request from tcp object
                 rv = uv_insert_request(loop, tcp->accept_requests[i]);
                 if(rv != 0){
@@ -234,10 +232,13 @@ run_tcp(uv_handle_t* handle){
         for(int i = 0; i < tcp->n_read_start_requests; i++){
             uv_read_start_t* req;
             memcpy(&req, (uv_read_start_t**)&tcp->read_start_requests[i], sizeof(uv_read_start_t*));
-            if(select(tcp->socket, &(tcp->readset), NULL, NULL, NULL) && req->is_alloc){
+            FD_ZERO(&(tcp->readset));
+            FD_SET(tcp->socket, &(tcp->readset));
+
+            if(select(tcp->socket + 1, &(tcp->readset), NULL, NULL, &tv) && req->is_alloc){
                 // no se debería utilizar nread para saber cuanto falta por completar del buffer
                 // req->buf->base + nread, req->buf->len - nread
-                ssize_t nread = read(tcp->socket, req->buf->base, req->buf->len);
+                ssize_t nread = read(tcp->socket, req->buf->base + req->nread, req->buf->len - req->nread);
                 req->nread += nread;
                 if(nread < 0){
                     ESP_LOGE("RUN_TCP_READ_START", "Error during read in run_tcp: errno %d", errno);
@@ -272,8 +273,13 @@ run_tcp(uv_handle_t* handle){
         for(int i = 0; i < tcp->n_write_requests; i++){
             uv_write_t* req;
             memcpy(&req, (uv_write_t**)&tcp->write_requests[i], sizeof(uv_write_t*));
-            if(select(tcp->socket, NULL, &(tcp->writeset), NULL, NULL)){
-                rv = write(tcp->socket, req->bufs, req->nbufs * sizeof(req->bufs[0]));
+            uv_stream_t* client = req->stream;
+
+            FD_ZERO(&(client->writeset));
+            FD_SET(client->socket, &(client->writeset));
+            if(select(client->socket + 1, NULL, &(client->writeset), NULL, &tv)){
+                rv = write(client->socket, req->bufs->base, req->nbufs * req->bufs->len);
+                ESP_LOGI("RUN_TCP_WRITE", "Written");
                 req->status = rv;
                 if(rv < 0){
                     ESP_LOGE("RUN_TCP_WRITE", "Error during write in run_tcp: errno %d", errno);
