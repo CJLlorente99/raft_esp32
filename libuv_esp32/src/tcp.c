@@ -283,7 +283,6 @@ run_tcp(uv_handle_t* handle){
                 req->status = rv;
                 if(rv < 0){
                     ESP_LOGE("RUN_TCP_WRITE", "Error during write in run_tcp: errno %d", errno);
-                    return;
                 }
 
                 rv = uv_insert_request(loop, tcp->write_requests[i]);

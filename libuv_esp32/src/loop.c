@@ -168,7 +168,7 @@ void
 request_run(uv_request_t* req){  
     if (!(req->vtbl->run)){
         ESP_LOGE("REQUEST_RUN", "Error when calling run method in request_run");
-        return;
+    }   else {
+        req->vtbl->run(req);
     }
-    req->vtbl->run(req);
 }

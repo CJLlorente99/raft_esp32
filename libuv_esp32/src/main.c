@@ -271,8 +271,9 @@ connection_cb(uv_stream_t* server, int status){
     uv_write_t* req = malloc(sizeof(uv_write_t));
     uv_buf_t* buf = malloc(sizeof(uv_buf_t));
     memset(buf, 0, sizeof(uv_buf_t));
+    buf->base = malloc(64*1024);
     strcpy(buf->base, "Saludos");
-    buf->len = 4096;
+    buf->len = 64*1024;
 
     rv = uv_write(req, (uv_stream_t*)client, buf, 1, write_cb);
     if(rv != 0){
@@ -338,7 +339,7 @@ uv_tcp_t* tcp_client;
 void
 alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf){
     buf->len = suggested_size;
-    // malloc buf->base
+    buf->base = malloc(suggested_size);
 }
 
 void
@@ -349,6 +350,7 @@ read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf){
     if(nread == buf->len){ // stop reading, everything expected has been read
         ESP_LOGI("READ_CB", "Everything received = %s", buf->base);
         uv_read_stop(stream);
+        uv_read_start(stream, stream->alloc_cb, stream->read_cb);
         return;
     } else if(nread == 0){ // more info is going to be read, well be called afterwards
         return;

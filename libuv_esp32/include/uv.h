@@ -23,7 +23,7 @@
 /// Some global constants
 
 #define SIGNAL_TASK_PRIORITY 4
-#define LOOP_RATE_MS 20
+#define LOOP_RATE_MS 100
 
 // fs flags
 
@@ -378,7 +378,7 @@ struct uv_tcp_s {
 };
 
 struct uv_buf_s {
-    char base[4096];
+    char* base;
     size_t len;
 };
 
