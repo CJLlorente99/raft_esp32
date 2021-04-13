@@ -140,6 +140,7 @@ uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is us
     ESP_LOGI("UV_RUN", "Entering uv_run loop");
     while(true){
         fsm_fire(loop->loopFSM);
+        // añadir sleep mode (CUIDADO CON LAS WIFI Y LAS CONEXIONES TCP)
         vTaskDelayUntil(&xLastTime, xFrequency);
     }
     return 1;

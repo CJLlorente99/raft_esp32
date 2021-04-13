@@ -278,6 +278,7 @@ run_tcp(uv_handle_t* handle){
             FD_ZERO(&(client->writeset));
             FD_SET(client->socket, &(client->writeset));
             if(select(client->socket + 1, NULL, &(client->writeset), NULL, &tv)){
+                ESP_LOGI("RUN_TCP_WRITE", "%s %d", req->bufs->base, req->bufs->len);
                 rv = write(client->socket, req->bufs->base, req->nbufs * req->bufs->len);
                 ESP_LOGI("RUN_TCP_WRITE", "Written");
                 req->status = rv;
