@@ -32,10 +32,10 @@
 #define CONFIG_FATFS_LFN_STACK   1
 #define CONFIG_FATFS_MAX_LFN      1
 
-#define UV_FS_O_APPEND FA_OPEN_APPEND
+#define UV_FS_O_APPEND FA_OPEN_APPEND // No se usa
 #define UV_FS_O_CREAT   FA_OPEN_ALWAYS
 #define UV_FS_O_DIRECT  0
-#define UV_FS_O_DIRECTORY   0
+#define UV_FS_O_DIRECTORY   0 // Se usa, if the file is not a directory file to open
 #define UV_FS_O_DSYNC   0
 #define UV_FS_O_EXCL    FA_CREATE_NEW // it does not exactly mean this
 #define UV_FS_O_EXLOCK  0
@@ -282,6 +282,7 @@ struct uv_fs_s {
     uv_fs_cb cb;
     uv_stat_t statbuf;
     char* path;
+    FF_DIR dp;
 };
 
 /* Handles */

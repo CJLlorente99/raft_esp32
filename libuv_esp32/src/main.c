@@ -433,14 +433,14 @@ newFileDir1 (uv_signal_t* handle, int signum){
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
 
     uv_buf_t bufs[2];
-    bufs[0].base = malloc(4096);
-    memset(bufs[0].base, 0, 4096);
+    bufs[0].base = malloc(strlen("Mensaje de prueba\n"));
+    memset(bufs[0].base, 0, strlen("Mensaje de prueba\n"));
     strcpy(bufs[0].base, "Mensaje de prueba\n");
-    bufs[0].len = 4096;
-    bufs[1].base = malloc(4096);
-    memset(bufs[1].base, 0, 4096);
+    bufs[0].len = strlen("Mensaje de prueba\n");
+    bufs[1].base = malloc(strlen("Mensaje de prueba2\n"));
+    memset(bufs[1].base, 0, strlen("Mensaje de prueba2\n"));
     strcpy(bufs[1].base, "Mensaje de prueba2\n");
-    bufs[1].len = 4096;
+    bufs[1].len = strlen("Mensaje de prueba2\n");
 
     ESP_LOGI("NEWFILEDIR1", "uv_fs_write");
     rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
@@ -461,32 +461,32 @@ newFileDir1 (uv_signal_t* handle, int signum){
 }
 
 void
-newFileDir2 (uv_signal_t* handle, int signum){
+newFile2Dir1 (uv_signal_t* handle, int signum){
     int rv;
     FIL file;
     FRESULT fr;
     uv_fs_t req;
-    const char* path = "dir2/example.txt";
+    const char* path = "dir1/example2.txt";
 
-    ESP_LOGI("NEWFILEDIR2", "f_mkdir");
-    fr = f_mkdir("dir2");
+    ESP_LOGI("newFile2Dir1", "f_mkdir");
+    fr = f_mkdir("dir1");
     if((fr != FR_EXIST) && (fr != FR_OK)){
-        ESP_LOGE("NEWFILEDIR1", "f_mkdir : %d", fr);
+        ESP_LOGE("newFile2Dir1", "f_mkdir : %d", fr);
     }
-    ESP_LOGI("NEWFILEDIR2", "f_mkdir successful");
+    ESP_LOGI("newFile2Dir1", "f_mkdir successful");
     
-    ESP_LOGI("NEWFILEDIR2", "uv_fs_open");
+    ESP_LOGI("newFile2Dir1", "uv_fs_open");
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
 
     uv_buf_t bufs[2];
-    bufs[0].base = malloc(4096);
-    memset(bufs[0].base, 0, 4096);
+    bufs[0].base = malloc(strlen("Mensaje de prueba\n"));
+    memset(bufs[0].base, 0, strlen("Mensaje de prueba\n"));
     strcpy(bufs[0].base, "Mensaje de prueba\n");
-    bufs[0].len = 4096;
-    bufs[1].base = malloc(4096);
-    memset(bufs[1].base, 0, 4096);
+    bufs[0].len = strlen("Mensaje de prueba\n");
+    bufs[1].base = malloc(strlen("Mensaje de prueba2\n"));
+    memset(bufs[1].base, 0, strlen("Mensaje de prueba2\n"));
     strcpy(bufs[1].base, "Mensaje de prueba2\n");
-    bufs[1].len = 4096;
+    bufs[1].len = strlen("Mensaje de prueba2\n");
 
     ESP_LOGI("NEWFILEDIR2", "uv_fs_write");
     rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
@@ -499,6 +499,38 @@ newFileDir2 (uv_signal_t* handle, int signum){
     if(rv != 0){
         ESP_LOGE("NEWFILEDIR2", "uv_fs_close");
     }
+
+    path = "dir1/example.txt";
+    memset(&file,0, sizeof(FIL));
+    memset(&req,0, sizeof(uv_fs_t));
+
+    rv = uv_fs_stat(NULL, &req, path, NULL);
+    ESP_LOGI("newFile2Dir1", "uv_fs_stat %d", req.statbuf.st_size);
+
+    ESP_LOGI("newFile2Dir1", "uv_fs_open");
+    file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
+
+    memset(bufs, 0, 2*sizeof(uv_buf_t));
+    bufs[0].base = malloc(strlen("Mensaje de prueba\n"));
+    memset(bufs[0].base, 0, strlen("Mensaje de prueba\n"));
+    strcpy(bufs[0].base, "Mensaje de prueba\n");
+    bufs[0].len = strlen("Mensaje de prueba\n");
+    bufs[1].base = malloc(strlen("Mensaje de prueba2\n"));
+    memset(bufs[1].base, 0, strlen("Mensaje de prueba2\n"));
+    strcpy(bufs[1].base, "Mensaje de prueba2\n");
+    bufs[1].len = strlen("Mensaje de prueba2\n");
+
+    ESP_LOGI("newFile2Dir1", "uv_fs_write");
+    rv = uv_fs_write(NULL, &req, file, bufs, 2, req.statbuf.st_size + 1, NULL);
+    if(rv != 0){
+        ESP_LOGE("newFile2Dir1", "uv_fs_write");
+    }
+
+    ESP_LOGI("newFile2Dir1", "uv_fs_close");
+    rv = uv_fs_close(NULL, &req, file, NULL);
+    if(rv != 0){
+        ESP_LOGE("newFile2Dir1", "uv_fs_close");
+    }
 }
 
 void
@@ -509,7 +541,7 @@ info(uv_signal_t* handle, int signum){
     FRESULT fr;
     uv_fs_t* req = malloc(sizeof(uv_fs_t));
     memset(req, 0, sizeof(uv_fs_t));
-    uv_dirent_t ent;
+    uv_dirent_t* ent = malloc(sizeof(uv_dirent_t));
     const char* path1 = "dir1";
 
     ESP_LOGI("INFO", "uv_fs_scandir");
@@ -517,63 +549,35 @@ info(uv_signal_t* handle, int signum){
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
     ESP_LOGI("INFO", "print results");
-    char* buf = malloc(4096);
+    char* buf;
     UINT br; 
     for(int i = 0; i < n; i++){
         ESP_LOGI("INFO", "uv_fs_scandir_next");
-        rv = uv_fs_scandir_next(req, &ent);
+        rv = uv_fs_scandir_next(req, ent);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_scandir_next");
         }
-        ESP_LOGI("INFO", "File name is %s", ent.name);
-        file = uv_fs_open(NULL, req, ent.name, UV_FS_O_RDONLY, 0, NULL);
-        rv = uv_fs_stat(NULL, req, ent.name, NULL);
+        ESP_LOGI("INFO", "File name is %s", ent->name);
+        file = uv_fs_open(NULL, req, ent->name, UV_FS_O_RDONLY, 0, NULL);
+        rv = uv_fs_stat(NULL, req, ent->name, NULL);
+        buf = malloc(req->statbuf.st_size);
         fr = f_read(&file, buf, req->statbuf.st_size, &br);
         if(fr != FR_OK){
             ESP_LOGE("INFO", "f_read");
         }
 
-        ESP_LOGI("INFO", "Tamaño %u", req->statbuf.st_size);
-        ESP_LOGI("INFO", "%s", buf);
+        ESP_LOGI("INFO", "Tamaño %u, leidos %u", req->statbuf.st_size, br);
+        for(int i = 0; i < req->statbuf.st_size; i++){
+            ESP_LOGI("INFO", "%c", buf[i]);
+        }
+        // ESP_LOGI("INFO", "%s %d %d", buf, strlen(buf), br);
+        free(buf);
 
         rv = uv_fs_close(NULL, req, file, NULL);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_close");
         }
     }
-
-    const char* path2 = "dir2";
-
-    memset(req, 0, sizeof(uv_fs_t));
-    ESP_LOGI("INFO", "uv_fs_scandir");
-    n = uv_fs_scandir(NULL, req, path2, 0, NULL);
-    ESP_LOGI("INFO", "Numero de archivos %d", n);
-
-    ESP_LOGI("INFO", "print results");
-    for(int i = 0; i < n; i++){
-        ESP_LOGI("INFO", "uv_fs_scandir_next");
-        rv = uv_fs_scandir_next(req, &ent);
-        if(rv != 0){
-            ESP_LOGE("INFO", "uv_fs_scandir_next");
-        }
-        ESP_LOGI("INFO", "File name is %s", ent.name);
-        file = uv_fs_open(NULL, req, ent.name, UV_FS_O_RDONLY, 0, NULL);
-        rv = uv_fs_stat(NULL, req, ent.name, NULL);
-        fr = f_read(&file, buf, req->statbuf.st_size, &br);
-        if(fr != FR_OK){
-            ESP_LOGE("INFO", "f_read");
-        }
-        
-        ESP_LOGI("INFO", "Tamaño %u", req->statbuf.st_size);
-        ESP_LOGI("INFO", "Caracteres a leer %u", br);
-        ESP_LOGI("INFO", "%s", buf);
-
-        rv = uv_fs_close(NULL, req, file, NULL);
-        if(rv != 0){
-            ESP_LOGE("INFO", "uv_fs_close");
-        }
-    }
-
 }
 
 void
@@ -640,7 +644,7 @@ main_fs(void* ignore){
 
     ESP_LOGI("SIGNAL_INIT", "Primer signal inicializado en main_fs");
 
-    rv = uv_signal_start(signal_dir2, newFileDir2, BUTTON_NEWFILEDIR2);
+    rv = uv_signal_start(signal_dir2, newFile2Dir1, BUTTON_NEWFILEDIR2);
     if(rv != 0){
         ESP_LOGE("SIGNAL_START","Error durante primer uv_signal_start en main_fs");
     }

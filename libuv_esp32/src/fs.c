@@ -122,20 +122,22 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
         return 1;
     }
 
-    ESP_LOGI("UV_FS_WRITE", "%s %u", bufs[0].base, (UINT)bufs[0].len);
-    rv = f_write(&file, (BYTE*)bufs[0].base, bufs[0].len, &bw);
-    if (rv != FR_OK || (bw != (bufs[0].len))){
-        ESP_LOGE("UV_FS_WRITE", "Error in f_write uv_fs_write. Code = %d, bw = %u", rv, bw);
-        return 1;
+    for(int i = 0; i < nbufs; i++){
+        ESP_LOGI("UV_FS_WRITE", "%s %u", bufs[i].base, (UINT)bufs[i].len);
+        rv = f_write(&file, (BYTE*)bufs[i].base, bufs[i].len, &bw);
+        if (rv != FR_OK || (bw != (bufs[i].len))){
+            ESP_LOGE("UV_FS_WRITE", "Error in f_write uv_fs_write. Code = %d, bw = %u", rv, bw);
+            return 1;
+        }
+        ESP_LOGI("UV_FS_WRITE", "%d bytes written, size is %d bytes", bw, f_size(&file));
     }
-    ESP_LOGI("UV_FS_WRITE", "%d bytes written, size is %d bytes", bw, f_size(&file));
 
     rv = f_sync(&file);
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_WRITE", "Error in f_sync in uv_fs_write. Code = %d",rv);
     }
 
-    rv = f_lseek(&file, 0);
+    rv = f_rewind(&file);
     if (rv != FR_OK)
     {
         ESP_LOGE("UV_FS_WRITE", "Error in uv_fs_write. Code = %d", rv);
@@ -205,23 +207,23 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
     // fills ent with the files present in req->dir (por ejemplo)
     // use f_findfirst and f_findnext to fill ent (containing the paths)
     FRESULT rv;
-    FF_DIR dp;
     FILINFO fno;
     TCHAR* fname;
 
     ent->type = UV_DIRENT_FILE;
 
-    rv = f_opendir(&dp, req->path);
-    if(rv != FR_OK){
-        ESP_LOGE("UV_FS_SCANDIR_NEXT", "Error during f_opendir in uv_fs_scandir. Code = %d", rv);
+    rv = f_findnext(&req->dp, &fno);
+    if(rv == FR_INVALID_OBJECT){
+        ESP_LOGI("UV_FS_SCANDIR_NEXT", "f_findfirst");
+        rv = f_findfirst(&req->dp, &fno, req->path, "*");
+        if(rv != FR_OK){
+            ESP_LOGE("UV_FS_SCANDIR_NEXT", "Error during f_findfirst in uv_fs_scandir. Code = %d", rv);
+            return 0;
+        }
+    }   else if(rv != FR_OK){
+        ESP_LOGE("UV_FS_SCANDIR_NEXT", "Error during f_findnext in uv_fs_scandir. Code = %d", rv);
         return 0;
-    }
-
-    rv = f_readdir(&dp, &fno);
-    if(rv != FR_OK){
-        ESP_LOGE("UV_FS_SCANDIR_NEXT", "Error during f_readdir in uv_fs_scandir. Code = %d", rv);
-        return 0;
-    }
+    }  
 
     fname = fno.fname;
     strcpy(ent->name, req->path);
@@ -229,10 +231,6 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
     strcat(ent->name, fname);
     strcat(ent->name, "\0");
 
-    rv = f_closedir(&dp);
-    if(rv != FR_OK){
-        ESP_LOGE("UV_FS_SCANDIR", "Error during f_closedir in uv_fs_scandir. Code = %d", rv);
-    }
     return 0;
 }
 
@@ -260,7 +258,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     rv = f_open(&fp, path, UV_FS_O_RDONLY);
     if(rv != FR_OK){
-        ESP_LOGE("UV_FS_STAT", "Error during f_open in uv_fs_stat");
+        ESP_LOGE("UV_FS_STAT", "Error during f_open in uv_fs_stat code %d",rv);
         return 1;
     }
 
