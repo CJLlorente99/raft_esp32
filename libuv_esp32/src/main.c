@@ -433,10 +433,14 @@ newFileDir1 (uv_signal_t* handle, int signum){
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
 
     uv_buf_t bufs[2];
+    bufs[0].base = malloc(4096);
+    memset(bufs[0].base, 0, 4096);
     strcpy(bufs[0].base, "Mensaje de prueba\n");
-    bufs[0].len = sizeof(bufs[0].base);
+    bufs[0].len = 4096;
+    bufs[1].base = malloc(4096);
+    memset(bufs[1].base, 0, 4096);
     strcpy(bufs[1].base, "Mensaje de prueba2\n");
-    bufs[1].len = sizeof(bufs[1].base);
+    bufs[1].len = 4096;
 
     ESP_LOGI("NEWFILEDIR1", "uv_fs_write");
     rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
@@ -475,10 +479,14 @@ newFileDir2 (uv_signal_t* handle, int signum){
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
 
     uv_buf_t bufs[2];
+    bufs[0].base = malloc(4096);
+    memset(bufs[0].base, 0, 4096);
     strcpy(bufs[0].base, "Mensaje de prueba\n");
-    bufs[0].len = sizeof(bufs[0].base);
+    bufs[0].len = 4096;
+    bufs[1].base = malloc(4096);
+    memset(bufs[1].base, 0, 4096);
     strcpy(bufs[1].base, "Mensaje de prueba2\n");
-    bufs[1].len = sizeof(bufs[1].base);
+    bufs[1].len = 4096;
 
     ESP_LOGI("NEWFILEDIR2", "uv_fs_write");
     rv = uv_fs_write(NULL, &req, file, bufs, 2, 0, NULL);
@@ -499,38 +507,36 @@ info(uv_signal_t* handle, int signum){
     int n;
     FIL file;
     FRESULT fr;
-    uv_fs_t req;
+    uv_fs_t* req = malloc(sizeof(uv_fs_t));
+    memset(req, 0, sizeof(uv_fs_t));
     uv_dirent_t ent;
     const char* path1 = "dir1";
 
     ESP_LOGI("INFO", "uv_fs_scandir");
-    n = uv_fs_scandir(NULL, &req, path1, 0, NULL);
+    n = uv_fs_scandir(NULL, req, path1, 0, NULL);
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
     ESP_LOGI("INFO", "print results");
-    char* buf;
+    char* buf = malloc(4096);
     UINT br; 
     for(int i = 0; i < n; i++){
         ESP_LOGI("INFO", "uv_fs_scandir_next");
-        rv = uv_fs_scandir_next(&req, &ent);
+        rv = uv_fs_scandir_next(req, &ent);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_scandir_next");
         }
         ESP_LOGI("INFO", "File name is %s", ent.name);
-        file = uv_fs_open(NULL, &req, ent.name, UV_FS_O_RDONLY, 0, NULL);
-        rv = uv_fs_stat(NULL, &req, ent.name, NULL);
-        fr = f_read(&file, &buf, req.statbuf.st_size, &br);
+        file = uv_fs_open(NULL, req, ent.name, UV_FS_O_RDONLY, 0, NULL);
+        rv = uv_fs_stat(NULL, req, ent.name, NULL);
+        fr = f_read(&file, buf, req->statbuf.st_size, &br);
         if(fr != FR_OK){
             ESP_LOGE("INFO", "f_read");
         }
 
-        ESP_LOGI("INFO", "Tamaño %u", req.statbuf.st_size);
-        ESP_LOGI("INFO", "Caracteres a leer %u", br);
-        for(int j = 0; j < br; j++){
-            ESP_LOGI("INFO", "%c", buf[j]);
-        }
+        ESP_LOGI("INFO", "Tamaño %u", req->statbuf.st_size);
+        ESP_LOGI("INFO", "%s", buf);
 
-        rv = uv_fs_close(NULL, &req, file, NULL);
+        rv = uv_fs_close(NULL, req, file, NULL);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_close");
         }
@@ -538,31 +544,31 @@ info(uv_signal_t* handle, int signum){
 
     const char* path2 = "dir2";
 
+    memset(req, 0, sizeof(uv_fs_t));
     ESP_LOGI("INFO", "uv_fs_scandir");
-    n = uv_fs_scandir(NULL, &req, path2, 0, NULL);
+    n = uv_fs_scandir(NULL, req, path2, 0, NULL);
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
     ESP_LOGI("INFO", "print results");
     for(int i = 0; i < n; i++){
         ESP_LOGI("INFO", "uv_fs_scandir_next");
-        rv = uv_fs_scandir_next(&req, &ent);
+        rv = uv_fs_scandir_next(req, &ent);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_scandir_next");
         }
         ESP_LOGI("INFO", "File name is %s", ent.name);
-        file = uv_fs_open(NULL, &req, ent.name, UV_FS_O_RDONLY, 0, NULL);
-        rv = uv_fs_stat(NULL, &req, ent.name, NULL);
-        fr = f_read(&file, &buf, req.statbuf.st_size, &br);
+        file = uv_fs_open(NULL, req, ent.name, UV_FS_O_RDONLY, 0, NULL);
+        rv = uv_fs_stat(NULL, req, ent.name, NULL);
+        fr = f_read(&file, buf, req->statbuf.st_size, &br);
         if(fr != FR_OK){
             ESP_LOGE("INFO", "f_read");
         }
         
-        ESP_LOGI("INFO", "Tamaño %u", req.statbuf.st_size);
+        ESP_LOGI("INFO", "Tamaño %u", req->statbuf.st_size);
         ESP_LOGI("INFO", "Caracteres a leer %u", br);
-        for(int j = 0; j < br; j++){
-            ESP_LOGI("INFO", "%c", buf[j]);
-        }
-        rv = uv_fs_close(NULL, &req, file, NULL);
+        ESP_LOGI("INFO", "%s", buf);
+
+        rv = uv_fs_close(NULL, req, file, NULL);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_close");
         }
@@ -668,12 +674,20 @@ void app_main(void)
     // Mount FAT-VFS
     ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
 
+    esp_partition_t* partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "fatvfs");
+    esp_err_t err = esp_partition_erase_range(partition,0, 1048576);
+    if (err != ESP_OK) {
+        ESP_LOGE("APP_MAIN", "Failed to format FATFS (%s)", esp_err_to_name(err));
+        return;
+    }
+
     const esp_vfs_fat_mount_config_t mount_config = {
             .max_files = 5,
             .format_if_mount_failed = true,
             .allocation_unit_size = CONFIG_WL_SECTOR_SIZE
     };
-    esp_err_t err = esp_vfs_fat_spiflash_mount("/spiflash", "fatvfs", &mount_config, &s_wl_handle);
+
+    err = esp_vfs_fat_spiflash_mount("/spiflash", "fatvfs", &mount_config, &s_wl_handle);
     if (err != ESP_OK) {
         ESP_LOGE("APP_MAIN", "Failed to mount FATFS (%s)", esp_err_to_name(err));
         return;

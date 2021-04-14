@@ -25,7 +25,6 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
@@ -58,7 +57,6 @@ FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int m
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
@@ -105,7 +103,6 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
@@ -125,12 +122,17 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
         return 1;
     }
 
-    ESP_LOGI("UV_FS_WRITE", "%s %u", bufs[0].base, bufs[0].len);
+    ESP_LOGI("UV_FS_WRITE", "%s %u", bufs[0].base, (UINT)bufs[0].len);
     rv = f_write(&file, (BYTE*)bufs[0].base, bufs[0].len, &bw);
-    if (rv != FR_OK || (bw != (bufs[0].len)))
-    {
+    if (rv != FR_OK || (bw != (bufs[0].len))){
         ESP_LOGE("UV_FS_WRITE", "Error in f_write uv_fs_write. Code = %d, bw = %u", rv, bw);
         return 1;
+    }
+    ESP_LOGI("UV_FS_WRITE", "%d bytes written, size is %d bytes", bw, f_size(&file));
+
+    rv = f_sync(&file);
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_WRITE", "Error in f_sync in uv_fs_write. Code = %d",rv);
     }
 
     rv = f_lseek(&file, 0);
@@ -160,7 +162,6 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
@@ -241,8 +242,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     FRESULT rv;
     int rv2;
     loopFSM_t* loopFSM;
-    req = malloc(sizeof(uv_fs_t));
-    FILINFO fno;
+    FIL fp;
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
@@ -258,14 +258,19 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
         }
     }
 
-    rv = f_stat(path, &fno);
-    if (rv != FR_OK)
-    {
-        ESP_LOGE("UV_FS_STAT", "Error in f_stat. Code = %d", rv);
+    rv = f_open(&fp, path, UV_FS_O_RDONLY);
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_STAT", "Error during f_open in uv_fs_stat");
         return 1;
     }
 
-    req->statbuf.st_size = fno.fsize;
+    req->statbuf.st_size = f_size(&fp);
+
+    rv = f_close(&fp);
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_STAT", "Error during f_close in uv_fs_stat");
+        return 1;
+    }
 
     return 0;
 }
@@ -278,7 +283,6 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* ne
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
@@ -308,7 +312,6 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
@@ -339,7 +342,6 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset,
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
@@ -384,7 +386,6 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
@@ -420,7 +421,6 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[
 
     if(loop && cb){
         loopFSM = loop->loopFSM->user_data;
-        req = malloc(sizeof(uv_fs_t));
         req->loop = loop;
         req->req.vtbl = &fs_req_vtbl;
         req->cb = cb;
