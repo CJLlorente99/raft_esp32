@@ -134,7 +134,7 @@ uv_now(const uv_loop_t* loop){
 }
 
 int
-uv_run (uv_loop_t* loop){ // uv_run_mode is not neccesary as only one mode is used in raft
+uv_run (uv_loop_t* loop, uv_run_mode mode){ // uv_run_mode is not neccesary as only one mode is used in raft
     portTickType xLastTime = xTaskGetTickCount();
     const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
     ESP_LOGI("UV_RUN", "Entering uv_run loop");
@@ -171,5 +171,14 @@ request_run(uv_request_t* req){
         ESP_LOGE("REQUEST_RUN", "Error when calling run method in request_run");
     }   else {
         req->vtbl->run(req);
+    }
+}
+
+void
+uv_close(uv_handle_t* handle, uv_close_cb close_cb){
+    int rv = 0;
+    rv = uv_remove_handle(handle->loop->loopFSM, handle);
+    if(rv != 0){
+        ESP_LOGE("UV_CLOSE", "Error when calling uv_remove_handle in uv_close");
     }
 }

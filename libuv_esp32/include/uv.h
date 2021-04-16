@@ -121,6 +121,13 @@ typedef enum {
     UV_HANDLE_TYPE_MAX
 } uv_handle_type;
 
+/* Only UV_RUN_DEFAULT is used anyway */
+typedef enum{
+    UV_RUN_DEFAULT = 0,
+    UV_RUN_ONCE,
+    UV_RUN_NOWAIT
+}   uv_run_mode;
+
 /// Declaration
 
 typedef struct handle_vtbl_s handle_vtbl_t;
@@ -174,6 +181,12 @@ typedef void (*uv_fs_cb)(uv_fs_t* req);
 
 // handle "class"
 struct uv_handle_s {
+    /* public */
+    void* data;
+    /* read-only */
+    uv_loop_t* loop;
+    uv_handle_type type;
+    /* private */
     handle_vtbl_t* vtbl;
 };
 
@@ -437,6 +450,7 @@ struct loopFSM_s
 
 // Some function prototypes
 void uv_update_time (loopFSM_t* loop);
+void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 
 // Timer function protypes
 int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle);
@@ -457,7 +471,7 @@ int uv_check_close(uv_check_t* handle);
 // Loop function prototypes
 int uv_loop_init (uv_loop_t* loop);
 int uv_loop_close (uv_loop_t* loop);
-int uv_run (uv_loop_t* loop);
+int uv_run (uv_loop_t* loop, uv_run_mode mode);
 
 // TCP function prototypes
 int uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp);

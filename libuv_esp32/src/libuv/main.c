@@ -90,7 +90,7 @@ main_signal(void* ignore){
 
     ESP_LOGI("SIGNAL_START", "Segundo uv_signal_start en main_signal");
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN","Error durante uv_run");
     }
@@ -153,7 +153,7 @@ main_check(void* ignore){
 
     ESP_LOGI("CHECK_START", "Primer uv_check_start en main_check");
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN","Error durante uv_run");
     }
@@ -236,7 +236,7 @@ main_timer(void* ignore){
 
     ESP_LOGI("TIMER_START", "Second uv_timer_start success");
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN", "Error in uv_run in main_timer");
     }
@@ -400,7 +400,7 @@ main_tcp(void* ignore){
 
     ESP_LOGI("TCP_CONNECT", "uv_tcp_connect success"); 
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN", "Error in uv_run in main_tcp");
     }
@@ -653,7 +653,7 @@ main_fs(void* ignore){
 
     ESP_LOGI("SIGNAL_START", "Primer uv_signal_start en main_fs");
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN", "Error in uv_run in main_fs");
     }
