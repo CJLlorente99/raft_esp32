@@ -93,7 +93,6 @@ uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
     req->buf = NULL;
     req->nread = 0;
     req->is_alloc = 0;
-    req->all = 0;
 
     rv = uv_insert_tcp((uv_tcp_t*)stream, (uv_request_t*)req, READ_START);
     if(rv != 0){
@@ -121,6 +120,7 @@ uv_read_stop(uv_stream_t* stream){
 
     req->loop = stream->loop;
     req->req.vtbl = &read_stop_req_vtbl;
+    req->stream = stream;
 
     rv = uv_insert_tcp((uv_tcp_t*)stream, (uv_request_t*)req, READ_STOP);
     if(rv != 0){

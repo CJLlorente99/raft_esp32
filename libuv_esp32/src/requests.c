@@ -62,17 +62,16 @@ run_read_start_req(uv_request_t* req){
         read_start_req->alloc_cb = NULL; // allocation should only be done once per read_start call
     }
     
-    if(read_start_req->all == 0){
-        read_start_req->read_cb(read_start_req->stream, read_start_req->nread, read_start_req->buf);
-        if(read_start_req->nread == read_start_req->buf->len)
-            read_start_req->all = 1;
-    }
+    read_start_req->read_cb(read_start_req->stream, read_start_req->nread, read_start_req->buf);
+    // if(read_start_req->nread == read_start_req->buf->len){
+    //     rv = uv_remove_request(loop, (uv_request_t*)req);
+    //     if(rv != 0){
+    //         ESP_LOGE("RUN_READ_START_REQ", "Error during uv_remove in run_read_start_req");
+    //         return;
+    //     }
+    // }
 
-    rv = uv_remove_request(loop, (uv_request_t*)req);
-    if(rv != 0){
-        ESP_LOGE("RUN_READ_START_REQ", "Error during uv_remove in run_read_start_req");
-        return;
-    }
+    
 }
 
 void
@@ -82,6 +81,12 @@ run_read_stop_req(uv_request_t* req){
     loopFSM_t* loop = read_stop_req->loop->loopFSM->user_data;
 
     rv = uv_remove_request(loop, (uv_request_t*)req);
+    if(rv != 0){
+        ESP_LOGE("RUN_READ_STOP_REQ", "Error during uv_remove in run_read_stop_req");
+        return;
+    }
+
+    rv = uv_remove_request(loop, read_stop_req->read_start_req);
     if(rv != 0){
         ESP_LOGE("RUN_READ_STOP_REQ", "Error during uv_remove in run_read_stop_req");
         return;

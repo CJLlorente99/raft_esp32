@@ -268,6 +268,8 @@ read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf){
 
     if(nread == buf->len){ // stop reading, everything expected has been read
         ESP_LOGI("READ_CB", "Everything received = %s", buf->base);
+        free(buf->base);
+        free(buf);
         uv_read_stop(stream);
         uv_read_start(stream, stream->alloc_cb, stream->read_cb);
         return;
@@ -309,9 +311,9 @@ connection_cb(uv_stream_t* server, int status){
     uv_write_t* req = malloc(sizeof(uv_write_t));
     uv_buf_t* buf = malloc(sizeof(uv_buf_t));
     memset(buf, 0, sizeof(uv_buf_t));
-    buf->base = malloc(64*1024);
+    buf->base = malloc(4*1024);
     strcpy(buf->base, "Saludos");
-    buf->len = 64*1024;
+    buf->len = 4*1024;
 
     rv = uv_write(req, (uv_stream_t*)client, buf, 1, write_cb);
     if(rv != 0){
@@ -328,17 +330,17 @@ main_tcp(void* ignore){
 
     rv = uv_loop_init(loop);
     if(rv != 0){
-        ESP_LOGE("LOOP_INIT","Error durante la inicializacion en main_signal");
+        ESP_LOGE("LOOP_INIT","Error durante la inicializacion en main_tcp");
     }
 
-    ESP_LOGI("LOOP_INIT", "Loop inicializado en main_signal");
+    ESP_LOGI("LOOP_INIT", "Loop inicializado en main_tcp");
 
-    // Init timers
+    // Init server side
     tcp_server = malloc(sizeof(uv_tcp_t));
 
     rv = uv_tcp_init(loop, tcp_server);
     if(rv != 0){
-        ESP_LOGE("TCP_INIT", "Error in first uv_tcp_init in main_tcp_server");
+        ESP_LOGE("TCP_INIT", "Error in first uv_tcp_init in main_tcp");
     }
 
     ESP_LOGI("TCP_INIT", "First uv_tcp_init success");
@@ -350,24 +352,24 @@ main_tcp(void* ignore){
 
     rv = uv_tcp_bind(tcp_server, (struct sockaddr*)&local_addr, 0);
     if(rv != 0){
-        ESP_LOGE("TCP_BIND", "Error in uv_tcp_bind in main_tcp_server");
+        ESP_LOGE("TCP_BIND", "Error in uv_tcp_bind in main_tcp");
     }
 
     ESP_LOGI("TCP_BIND", "uv_tcp_bind success");
 
     rv = uv_listen((uv_stream_t*)tcp_server, 1, connection_cb);
     if(rv != 0){
-        ESP_LOGE("UV_LISTEN", "Error in uv_listen in main_tcp_server");
+        ESP_LOGE("UV_LISTEN", "Error in uv_listen in main_tcp");
     }
 
     ESP_LOGI("UV_LISTEN", "uv_listen success");
 
-    // Init timers
+    // Init client side
     tcp_client = malloc(sizeof(uv_tcp_t));
 
     rv = uv_tcp_init(loop, tcp_client);
     if(rv != 0){
-        ESP_LOGE("TCP_INIT", "Error in first uv_tcp_init in main_tcp_client");
+        ESP_LOGE("TCP_INIT", "Error in first uv_tcp_init in main_tcp");
     }
 
     ESP_LOGI("TCP_INIT", "First uv_tcp_init success");
@@ -379,7 +381,7 @@ main_tcp(void* ignore){
 
     rv = uv_tcp_bind(tcp_client, (struct sockaddr*)&client_addr, 0);
     if(rv != 0){
-        ESP_LOGE("TCP_BIND", "Error in uv_tcp_bind in main_tcp_client");
+        ESP_LOGE("TCP_BIND", "Error in uv_tcp_bind in main_tcp");
     }
 
     ESP_LOGI("TCP_BIND", "uv_tcp_bind success");
@@ -393,14 +395,14 @@ main_tcp(void* ignore){
 
     rv = uv_tcp_connect(req, tcp_client, (struct sockaddr*)&server_addr, connect_cb);
     if(rv != 0){
-        ESP_LOGE("TCP_CONNECT", "Error in uv_tcp_connect in main_tcp_client");
+        ESP_LOGE("TCP_CONNECT", "Error in uv_tcp_connect in main_tcp");
     }
 
     ESP_LOGI("TCP_CONNECT", "uv_tcp_connect success"); 
 
     rv = uv_run(loop);
     if(rv != 0){
-        ESP_LOGE("UV_RUN", "Error in uv_run in main_timer");
+        ESP_LOGE("UV_RUN", "Error in uv_run in main_tcp");
     }
 
     vTaskDelete(NULL);
@@ -702,6 +704,6 @@ void app_main(void)
     // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_check, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
-    xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
+    xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
 }

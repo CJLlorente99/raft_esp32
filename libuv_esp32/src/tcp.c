@@ -142,7 +142,7 @@ run_tcp(uv_handle_t* handle){
                 // TODO
                 // No siempre que sea = -1 es error. Usar errno.h para saber que tipo de error ha sido y si debe volver a intentarse
                 ESP_LOGE("RUN_TCP_CONNECT", "Error during connect in run tcp: errno %d", errno);
-                return;
+                return; 
             }
             // add request to be called in following state (run_requests)
             // take out request from tcp object
@@ -245,25 +245,40 @@ run_tcp(uv_handle_t* handle){
                 }
             }
             rv = uv_insert_request(loop, (uv_request_t*)req);
-                if(rv != 0){
-                    ESP_LOGE("RUN_TCP_READ_START", "Error during uv_insert in run_tcp");
-                    return;
-                }
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP_READ_START", "Error during uv_insert in run_tcp");
+                return;
+            }
             // DO NOT uv_remove the read start request (uv_read_stop is the one doing that)
         }
     }
 
     if(tcp->n_read_stop_requests > 0){
         for(int i = 0; i < tcp->n_read_stop_requests; i++){
-            rv = uv_remove_tcp(tcp, tcp->read_start_requests[i], READ_START);
+            uv_read_stop_t* req;
+            memcpy(&req, (uv_read_stop_t**)&tcp->read_stop_requests[i], sizeof(uv_read_stop_t*));
+
+            /* Stop the correspoding read_start_request */
+            for(int j = 0; j < tcp->n_read_start_requests; j++){
+                if(((uv_read_start_t*)tcp->read_start_requests[j])->stream == req->stream){
+                    req->read_start_req = tcp->read_start_requests[j];
+                    rv = uv_remove_tcp(tcp, tcp->read_start_requests[j], READ_START);
+                    if(rv != 0){
+                        ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_remove in run_tcp");
+                        return;
+                    }
+                }
+            }
+            
+            rv = uv_remove_tcp(tcp, tcp->read_stop_requests[i], READ_STOP);
             if(rv != 0){
                 ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_remove in run_tcp");
                 return;
             }
 
-            rv = uv_remove_tcp(tcp, tcp->read_stop_requests[i], READ_STOP);
+            rv = uv_insert_request(loop, (uv_request_t*)req);
             if(rv != 0){
-                ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_remove in run_tcp");
+                ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_insert in run_tcp");
                 return;
             }
         }

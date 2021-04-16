@@ -1,7 +1,5 @@
 #include "uv.h"
 
-#define LED_DEBUG_PORT 5
-
 /*  Se podría cambiar todo por 
     loop->active_handlers = realloc(loop->active_handlers, i * sizeof(uv_handle_t*));
     if(!loop->active_handlers){
@@ -24,6 +22,12 @@ uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle){
             
         memcpy(loop->active_handlers, &handle, sizeof(uv_handle_t*));
     } else{
+        /* Make sure this handler is new */
+        for(int j = 0; j < loop->n_active_handlers; j++){
+            if(loop->active_handlers[j] == handle)
+                return 0;
+        }
+
         loop->active_handlers = realloc(loop->active_handlers, i * sizeof(uv_handle_t*));
         if(!loop->active_handlers){
             ESP_LOGE("UV_INSERT_HANDLE", "Error pointer is NULL after malloc in uv_insert_handle");
@@ -62,6 +66,7 @@ uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle){
 
     loop->n_active_handlers = new_n_active;
     loop->active_handlers = new_pointer;
+    free(handle);
 
     return 0;
 }
@@ -79,6 +84,12 @@ uv_insert_request(loopFSM_t* loop, uv_request_t* req){
             
         memcpy(loop->active_requests, &req, sizeof(uv_request_t*));
     } else{
+        /* Make sure this requests is new */
+        for(int j = 0; j < loop->n_active_requests; j++){
+            if(loop->active_requests[j] == req)
+                return 0;
+        }
+
         loop->active_requests = realloc(loop->active_requests, i * sizeof(uv_request_t*));
         if(!loop->active_requests){
             ESP_LOGE("UV_INSERT_REQUESTS", "Error pointer is NULL after malloc in uv_insert_requests");
@@ -116,6 +127,7 @@ uv_remove_request(loopFSM_t* loop, uv_request_t* req){
     
     loop->n_active_requests = new_n_active;
     loop->active_requests = new_pointer;
+    free(req);
 
     return 0;
 }
@@ -173,6 +185,12 @@ uv_insert_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type){
             
         memcpy(newpointer, &req, sizeof(uv_request_t*));
     } else{
+        /* Make sure this requests is new */
+        for(int j = 0; j < n_active; j++){
+            if(pointer[j] == req)
+                return 0;
+        }
+        
         newpointer = realloc(pointer, i * sizeof(uv_request_t*));
         if(!newpointer){
             ESP_LOGE("UV_INSERT_REQUESTS", "Error pointer is NULL after malloc in uv_insert_requests");
@@ -317,6 +335,8 @@ uv_remove_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type){
     default:
         return 1;
     }
+
+    // free(req);
 
     return 0;
 }

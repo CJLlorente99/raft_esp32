@@ -263,12 +263,13 @@ struct uv_read_start_s {
     uv_buf_t* buf;
     ssize_t nread;
     int is_alloc : 1;
-    int all;
 };
 
 struct uv_read_stop_s {
     uv_request_t req;
     uv_loop_t* loop;
+    uv_stream_t* stream;
+    uv_request_t* read_start_req;
 };
 
 struct uv_fs_s {
