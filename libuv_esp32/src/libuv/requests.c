@@ -110,5 +110,21 @@ run_write_req(uv_request_t* req){
 
 void
 run_fs_req(uv_request_t* req){
-    // TODO
+    // TODO (never used in raft)
+}
+
+void
+run_work_req(uv_request_t* req){
+    int rv;
+    uv_work_t* work_req = (uv_work_t*) req;
+    loopFSM_t* loop = work_req->loop->loopFSM->user_data;
+
+    work_req->work_cb(work_req);
+    work_req->after_work_cb(work_req, 0);
+
+    rv = uv_remove_request(loop, (uv_request_t*)req);
+    if(rv != 0){
+        ESP_LOGE("RUN_WRITE_REQ", "Error during uv_remove in run_write_req");
+        return;
+    }
 }

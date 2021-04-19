@@ -226,8 +226,6 @@ run_tcp(uv_handle_t* handle){
         }
     }
 
-    // not sure this functionality is what it actually should be
-    // I think read should be called until buffer is full
     if(tcp->n_read_start_requests > 0){ 
         for(int i = 0; i < tcp->n_read_start_requests; i++){
             uv_read_start_t* req;
@@ -238,6 +236,9 @@ run_tcp(uv_handle_t* handle){
             if(select(tcp->socket + 1, &(tcp->readset), NULL, NULL, &tv) && req->is_alloc){
                 // no se debería utilizar nread para saber cuanto falta por completar del buffer
                 // req->buf->base + nread, req->buf->len - nread
+                // CUIDADO, raft aumenta el mismo buf.base y reduce buf.len
+                // ssize_t nread = read(tcp->socket, req->buf->base, req->buf->len);
+                // req->nread = nread;
                 ssize_t nread = read(tcp->socket, req->buf->base + req->nread, req->buf->len - req->nread);
                 req->nread += nread;
                 if(nread < 0){

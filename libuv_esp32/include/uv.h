@@ -128,33 +128,43 @@ typedef enum{
     UV_RUN_NOWAIT
 }   uv_run_mode;
 
-/// Declaration
+/// Types declaration
+
+// Basic objects and vtbl
 
 typedef struct handle_vtbl_s handle_vtbl_t;
+typedef struct uv_handle_s uv_handle_t;
 typedef struct request_vtbl_s request_vtbl_t;
+typedef struct uv_request_s uv_request_t;
+
+// Handles
 
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_stream_s uv_stream_t;
-typedef struct uv_buf_s uv_buf_t;
 typedef struct uv_check_s uv_check_t;
-typedef struct uv_handle_s uv_handle_t;
+typedef struct uv_poll_s uv_poll_t;
+
+// Requests
+
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
 typedef struct uv_listen_s uv_listen_t;
 typedef struct uv_accept_s uv_accept_t;
 typedef struct uv_read_start_s uv_read_start_t;
 typedef struct uv_read_stop_s uv_read_stop_t;
-typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_fs_s uv_fs_t;
-typedef FIL uv_file;
-typedef struct uv_dirent_s uv_dirent_t;
-typedef struct uv_request_s uv_request_t;
-typedef struct uv_stat_s uv_stat_t;
+typedef struct uv_work_s uv_work_t;
+
+// Others
 
 typedef struct loopFSM_s loopFSM_t;
+typedef FIL uv_file;
+typedef struct uv_dirent_s uv_dirent_t;
+typedef struct uv_buf_s uv_buf_t;
+typedef struct uv_stat_s uv_stat_t;
 
 // For signal purposes
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
@@ -178,6 +188,10 @@ typedef void (*uv_poll_cb)(uv_poll_t* handle, int status, int events);
 
 // For fs puposes
 typedef void (*uv_fs_cb)(uv_fs_t* req);
+
+// For work purposes
+typedef void (*uv_work_cb)(uv_work_t* req);
+typedef void (*uv_after_work_cb)(uv_work_t* req, int status);
 
 // handle "class"
 struct uv_handle_s {
@@ -297,6 +311,18 @@ struct uv_fs_s {
     uv_stat_t statbuf;
     char* path;
     FF_DIR dp;
+};
+
+struct uv_work_s {
+    uv_request_t req;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_req_type type;
+    /* private */
+    uv_loop_t* loop;
+    uv_work_cb work_cb;
+    uv_after_work_cb after_work_cb;
 };
 
 /* Handles */
@@ -497,6 +523,9 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
 int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset, uv_fs_cb cb);
 int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
 
+// work function prototypes
+int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb, uv_after_work_cb after_work_cb);
+
 // Core function prototypes
 int uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle);
 int uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle);
@@ -513,5 +542,6 @@ void run_read_start_req(uv_request_t* req);
 void run_read_stop_req(uv_request_t* req);
 void run_write_req(uv_request_t* req);
 void run_fs_req(uv_request_t* req);
+void run_work_req(uv_request_t* req);
 
 #endif /* UV_H */
