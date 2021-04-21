@@ -1,35 +1,43 @@
 #include "uv.h"
 
+
+/* Init function. Initializes a socket */
 int
-uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp){
+uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp){
     int rv;
 
-    tcp->loop = loop_s;
+    tcp->self.loop = loop;
+    tcp->self.type = UV_TCP;
+    tcp->self.vtbl = NULL;
 
-    loopFSM_t* loop = loop_s->loopFSM->user_data;
-
-    tcp->type = UV_TCP;
-    tcp->flags = 0;
     tcp->alloc_cb = NULL;
     tcp->close_cb = NULL;
+    tcp->connect_cb = NULL;
     tcp->connection_cb = NULL;
+    tcp->flags = 0;
+    tcp->loop = loop;
     tcp->read_cb = NULL;
+    tcp->server = tcp;
+    tcp->socket = -1;
+    tcp->src_sockaddr = NULL;
+    tcp->type = UV_TCP;
+    tcp->write_cb = NULL;
 
-    // Create socket
-    int tcp_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    if(tcp_socket < 0){
+    /* Try to create socket */
+    tcp->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    if(tcp->socket < 0){
         ESP_LOGE("UV_TCP_INIT", "Error during socket creation in uv_tcp_init");
         return 1;
     }
 
     // setsockopt()?
 
-    tcp->socket = tcp_socket;
-
     return 0;
 }
 
 /* Run function, vtbl and uv_tcp_bind */
+
+/* Run bind function just tries to bind previously initialized socket to a given sockaddr. Then removes handle. */
 void
 run_bind_handle(uv_handle_t* handle){
     int rv;
@@ -57,11 +65,14 @@ uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
     int rv;
 
     handle->src_sockaddr = addr;
+
     uv_bind_t* req = malloc(sizeof(uv_bind_t));
 
+    req->req.loop = handle->loop;
     req->req.type = UV_UNKNOWN_HANDLE;
-    req->loop = handle->loop;
     req->req.vtbl = &bind_handle_vtbl;
+
+    req->loop = handle->loop;
     req->tcp = handle;
     
     /* Add handle */
@@ -74,6 +85,8 @@ uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
 }
 
 /* Run function, vtbl and uv_tcp_connect */
+
+/* Run connect handle tries to connect previously created socket to a given sockaddr. If connection has succeeded cb will be called. Then removes handle  */
 void
 run_connect_handle(uv_handle_t* handle){
     int rv;
@@ -103,17 +116,18 @@ static handle_vtbl_t connect_handle_vtbl = {
 
 int
 uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr, uv_connect_cb cb){
-    // loopFSM_t* loop = handle->self.loop->loopFSM->user_data;
     int rv;
 
+    req->req.loop = handle->loop;
     req->req.type = UV_UNKNOWN_HANDLE;
     req->req.vtbl = &connect_handle_vtbl;
-    req->loop = handle->loop;
+
     req->cb = cb;
     req->dest_sockaddr = addr;
+    req->loop = handle->loop;
     req->status = 0;
-    req->type = UV_CONNECT;
     req->tcp = handle;
+    req->type = UV_CONNECT;
 
     /* Add handle */
     rv = uv_insert_handle(handle->loop->loopFSM->user_data, (uv_handle_t*)req);

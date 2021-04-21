@@ -21,14 +21,16 @@ static handle_vtbl_t work_handle_vtbl = {
 };
 
 int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb, uv_after_work_cb after_work_cb){
-    req->type = UV_WORK;
-    req->req.type = UV_UNKNOWN_HANDLE;
-    req->loop = loop;
-    req->work_cb = work_cb;
-    req->after_work_cb = after_work_cb;
-    req->req.vtbl = &work_handle_vtbl;
-
     int rv;
+    
+    req->req.loop = loop;
+    req->req.type = UV_UNKNOWN_HANDLE;
+    req->req.vtbl = &work_handle_vtbl;
+    
+    req->after_work_cb = after_work_cb;
+    req->loop = loop;
+    req->type = UV_WORK;
+    req->work_cb = work_cb;
 
     rv = uv_insert_handle(loop->loopFSM->user_data, (uv_handle_t*)req);
     if(rv != 0){

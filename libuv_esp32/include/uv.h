@@ -264,7 +264,6 @@ struct uv_listen_s {
     uv_stream_t* stream;
     uv_connection_cb cb;
     int status;
-    uv_tcp_t* tcp;
 };
 
 struct uv_accept_s {
@@ -462,7 +461,7 @@ int uv_loop_close (uv_loop_t* loop);
 int uv_run (uv_loop_t* loop, uv_run_mode mode);
 
 // TCP function prototypes
-int uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp);
+int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp);
 int uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags);
 int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr, uv_connect_cb cb);
 

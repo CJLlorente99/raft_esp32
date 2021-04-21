@@ -1,13 +1,8 @@
 #include "uv.h"
 
-#define LED_DEBUG_PORT 5
-
 static void IRAM_ATTR signal_isr(void* args);
 
-// EL UNICO USO QUE SE HACE DEL SIGNAL EN RAFT ES PARA CAPTAR SEÑALES DE INTERRUPCION
-// GENERADAS POR EL USER
-
-// run implementation for signals
+/* Run function, vtbl and uv_signal */
 static void
 run_signal(uv_handle_t* handle){
     uv_signal_t* signal = (uv_signal_t*) handle;
@@ -17,7 +12,6 @@ run_signal(uv_handle_t* handle){
     }
 }
 
-// virtual table for signal handlers
 static handle_vtbl_t signal_vtbl = {
     .run = run_signal
 };
@@ -25,12 +19,14 @@ static handle_vtbl_t signal_vtbl = {
 int 
 uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){
 
-    handle->loop = loop;
+    handle->self.loop = loop;
+    handle->self.type = UV_SIGNAL;
     handle->self.vtbl = &signal_vtbl;
 
     handle->intr_bit = 0;
+    handle->loop = loop;
     handle->signal_cb = NULL;
-    handle->signum = 0;
+    handle->signum = -1;
     handle->type = UV_SIGNAL;
 
     return 0;
@@ -41,17 +37,25 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
     loopFSM_t* loop = handle->loop->loopFSM->user_data;
     int rv = 0;
     esp_err_t err;
-    // TODO
-    // comprobar si tiene el mismo signum. Si lo tienen, encontrar el handle y cambiar el signal_cb
 
-    // "Fill" handle
+    /* Find for handler with same signum. If exists, remove because it will be updated */
+    for(int i = 0; i < loop->n_active_handlers; i++){
+        if(loop->active_handlers[i]->type == UV_SIGNAL){
+            uv_signal_t* signal = (uv_signal_t*)loop->active_handlers[i];
+            if(signal->signum == signum){
+                rv = uv_remove_handle(loop, (uv_handle_t*)signal);
+                if(rv != 0){
+                    ESP_LOGE("UV_SIGNAL_STOP", "Error when calling uv_remove_handle in uv_signal_stop");
+                    return 1;
+                }
+            }
+        }
+    }
 
     handle->signal_cb = signal_cb;
     handle->signum = signum;
 
-    // Init interrupt for given signum
-
-    ESP_LOGI("UV_SIGNAL_START", "Setting interrupt for signum %d", signum);
+    /* Init interrupt for given signum */
 
     err = gpio_intr_enable(signum);
     if(err != 0){
@@ -71,6 +75,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
             ESP_LOGE("UV_SIGNAL_START", "Error during gpio_isr_register in uv_signal_start: err %x", err);
             return 1;
         }
+        loop->signal_isr_activated = 1;
     }
     
     err = gpio_isr_handler_add(signum, signal_isr, (void*) handle);
@@ -78,8 +83,6 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
         ESP_LOGE("UV_SIGNAL_START", "Error during gpio_isr_handler_add in uv_signal_start: err %x", err);
         return 1;
     }
-
-    loop->signal_isr_activated = 1;
 
     rv = uv_insert_handle(loop, (uv_handle_t*)handle);
     if (rv != 0){

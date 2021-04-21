@@ -2,14 +2,13 @@
 
 #define LED_DEBUG_PORT 5
 
-// FSM states
+/* FSM states */
 enum states {
     IDLE,
     RUN,
-    REQUESTS
 };
 
-// Checking functions (static int that return either 1 or 0)
+/* Guards */
 static int
 check_all_handlers_run (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
@@ -31,7 +30,7 @@ check_is_starting (fsm_t* this){
     return p_this->loop_is_starting;
 }
 
-// FSM functions (static void)
+/* FSM transition functions */
 
 /* Call every handler */
 static void
@@ -47,13 +46,12 @@ run_handlers (fsm_t* this){
     }
 }
 
-// FSM init
+/* FSM init */
 fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 {
 	static fsm_trans_t loopFSM_tt[] = {
         { RUN, check_all_handlers_run, RUN, run_handlers },
         { RUN, check_is_closing, IDLE, NULL},
-        { REQUESTS, check_is_closing, IDLE, NULL},
         { IDLE, check_is_starting, RUN, run_handlers},
 		{ -1, NULL, -1, NULL},
 	};
@@ -76,12 +74,13 @@ uv_loop_init (uv_loop_t* loop){
         return 1;
     }
 
-    newLoopFSM->n_active_handlers = 0;
-    newLoopFSM->n_handlers_run = 0;
+    newLoopFSM->last_n_active_handlers = 0;
     newLoopFSM->loop_is_closing = 0;
     newLoopFSM->loop_is_starting = 1;
-    newLoopFSM->time = begin;
+    newLoopFSM->n_active_handlers = 0;
+    newLoopFSM->n_handlers_run = 0;
     newLoopFSM->signal_isr_activated = 0;
+    newLoopFSM->time = begin;
 
     loop->loopFSM = fsm_new_loopFSM (newLoopFSM);
 
@@ -94,8 +93,11 @@ uv_loop_init (uv_loop_t* loop){
 
 int
 uv_loop_close (uv_loop_t* loop){
-    loopFSM_t* this = loop->loopFSM->user_data; // es necesario poner esto?
+    loopFSM_t* this = loop->loopFSM->user_data;
     this->loop_is_closing = 1;
+
+    free(this);
+
     return 0;
 }
 
@@ -109,7 +111,6 @@ int
 uv_run (uv_loop_t* loop, uv_run_mode mode){ // uv_run_mode is not neccesary as only one mode is used in raft
     portTickType xLastTime = xTaskGetTickCount();
     const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
-    ESP_LOGI("UV_RUN", "Entering uv_run loop");
     while(true){
         fsm_fire(loop->loopFSM);
         // añadir sleep mode (CUIDADO CON LAS WIFI Y LAS CONEXIONES TCP)
@@ -144,4 +145,7 @@ uv_close(uv_handle_t* handle, uv_close_cb close_cb){
     if(rv != 0){
         ESP_LOGE("UV_CLOSE", "Error when calling uv_remove_handle in uv_close");
     }
+
+    /* Cuidado con esto. handle estará deallocated, va a dar error de memoria */
+    close_cb(handle);
 }
