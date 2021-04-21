@@ -248,7 +248,7 @@ struct uv_write_s {
     uv_loop_t* loop;
     uv_write_cb cb;
     int status;
-    const uv_buf_t* bufs;
+    uv_buf_t* bufs;
     int nbufs;
     uv_stream_t* stream;
 };

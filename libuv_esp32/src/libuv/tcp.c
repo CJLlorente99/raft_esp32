@@ -284,6 +284,14 @@ run_tcp(uv_handle_t* handle){
                 ESP_LOGE("RUN_TCP_WRITE", "Error during write in run_tcp: errno %d", errno);
             }
 
+            if(rv != req->nbufs * req->bufs->len){
+                /*  Should be called again in order to write everything */
+                req->bufs->base += rv;
+                req->bufs->len = req->nbufs * req->bufs->len - rv;
+                req->nbufs = 1;
+                return;
+            }
+
             rv = uv_insert_request(loop, tcp->write_requests[i]);
             if(rv != 0){
                 ESP_LOGE("RUN_TCP_WRITE", "Error during uv_insert in run_tcp");
