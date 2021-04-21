@@ -118,36 +118,51 @@ typedef enum {
     UV_UDP,
     UV_SIGNAL,
     UV_FILE,
-    UV_HANDLE_TYPE_MAX
+    UV_HANDLE_TYPE_MAX,
+    UV_READ_START
 } uv_handle_type;
 
-/// Declaration
+/* Only UV_RUN_DEFAULT is used anyway */
+typedef enum{
+    UV_RUN_DEFAULT = 0,
+    UV_RUN_ONCE,
+    UV_RUN_NOWAIT
+}   uv_run_mode;
+
+/// Types declaration
+
+// Basic objects and vtbl
 
 typedef struct handle_vtbl_s handle_vtbl_t;
-typedef struct request_vtbl_s request_vtbl_t;
+typedef struct uv_handle_s uv_handle_t;
+
+// Handles
 
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_signal_s uv_signal_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_stream_s uv_stream_t;
-typedef struct uv_buf_s uv_buf_t;
 typedef struct uv_check_s uv_check_t;
-typedef struct uv_handle_s uv_handle_t;
+typedef struct uv_poll_s uv_poll_t;
+
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
+typedef struct uv_bind_s uv_bind_t;
 typedef struct uv_listen_s uv_listen_t;
 typedef struct uv_accept_s uv_accept_t;
 typedef struct uv_read_start_s uv_read_start_t;
 typedef struct uv_read_stop_s uv_read_stop_t;
-typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_fs_s uv_fs_t;
-typedef FIL uv_file;
-typedef struct uv_dirent_s uv_dirent_t;
-typedef struct uv_request_s uv_request_t;
-typedef struct uv_stat_s uv_stat_t;
+typedef struct uv_work_s uv_work_t;
+
+// Others
 
 typedef struct loopFSM_s loopFSM_t;
+typedef FIL uv_file;
+typedef struct uv_dirent_s uv_dirent_t;
+typedef struct uv_buf_s uv_buf_t;
+typedef struct uv_stat_s uv_stat_t;
 
 // For signal purposes
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
@@ -172,8 +187,18 @@ typedef void (*uv_poll_cb)(uv_poll_t* handle, int status, int events);
 // For fs puposes
 typedef void (*uv_fs_cb)(uv_fs_t* req);
 
+// For work purposes
+typedef void (*uv_work_cb)(uv_work_t* req);
+typedef void (*uv_after_work_cb)(uv_work_t* req, int status);
+
 // handle "class"
 struct uv_handle_s {
+    /* public */
+    void* data;
+    /* read-only */
+    uv_loop_t* loop;
+    uv_handle_type type;
+    /* private */
     handle_vtbl_t* vtbl;
 };
 
@@ -184,19 +209,6 @@ struct handle_vtbl_s {
 
 // polymorphic method
 void handle_run(uv_handle_t* handle);
-
-// request "class"
-struct uv_request_s {
-    request_vtbl_t* vtbl;
-};
-
-// virtual table for every request
-struct request_vtbl_s {
-    void (*run)(uv_request_t* handle);
-};
-
-// polymorphic method
-void request_run(uv_request_t* handle);
 
 /// Types definition
 /* Various */
@@ -212,7 +224,7 @@ struct uv_stat_s {
 /* Requests */
 
 struct uv_write_s {
-    uv_request_t req;
+    uv_handle_t req;
     /* public */
     void* data;
     /* read-only */
@@ -221,13 +233,19 @@ struct uv_write_s {
     uv_loop_t* loop;
     uv_write_cb cb;
     int status;
-    const uv_buf_t* bufs;
+    uv_buf_t* bufs;
     int nbufs;
     uv_stream_t* stream;
 };
 
+struct uv_bind_s {
+    uv_handle_t req;
+    uv_loop_t* loop;
+    uv_tcp_t* tcp;
+};
+
 struct uv_connect_s {
-    uv_request_t req;
+    uv_handle_t req;
     /* public */
     void* data;
     /* read-only */
@@ -237,25 +255,27 @@ struct uv_connect_s {
     const struct sockaddr* dest_sockaddr;
     uv_connect_cb cb;
     int status;
+    uv_tcp_t* tcp;
 };
 
 struct uv_listen_s {
-    uv_request_t req;
+    uv_handle_t req;
     uv_loop_t* loop;
     uv_stream_t* stream;
     uv_connection_cb cb;
     int status;
+    uv_tcp_t* tcp;
 };
 
 struct uv_accept_s {
-    uv_request_t req;
+    uv_handle_t req;
     uv_loop_t* loop;
     uv_stream_t* server;
     uv_stream_t* client;
 };
 
 struct uv_read_start_s {
-    uv_request_t req;
+    uv_handle_t req;
     uv_loop_t* loop;
     uv_stream_t* stream;
     uv_alloc_cb alloc_cb;
@@ -266,14 +286,13 @@ struct uv_read_start_s {
 };
 
 struct uv_read_stop_s {
-    uv_request_t req;
+    uv_handle_t req;
     uv_loop_t* loop;
     uv_stream_t* stream;
-    uv_request_t* read_start_req;
 };
 
 struct uv_fs_s {
-    uv_request_t req;
+    uv_handle_t req;
     /* public */
     void* data;
     /* read-only */
@@ -284,6 +303,18 @@ struct uv_fs_s {
     uv_stat_t statbuf;
     char* path;
     FF_DIR dp;
+};
+
+struct uv_work_s {
+    uv_handle_t req;
+    /* public */
+    void* data;
+    /* read-only */
+    uv_req_type type;
+    /* private */
+    uv_loop_t* loop;
+    uv_work_cb work_cb;
+    uv_after_work_cb after_work_cb;
 };
 
 /* Handles */
@@ -327,9 +358,6 @@ struct uv_stream_s {
     uv_alloc_cb alloc_cb;
     uv_tcp_t* server;
     int socket;
-    fd_set readset;
-    fd_set writeset;
-    fd_set errorset;
 };
 
 
@@ -345,9 +373,6 @@ struct uv_tcp_s {
     uv_alloc_cb alloc_cb;
     uv_tcp_t* server;
     int socket;
-    fd_set readset;
-    fd_set writeset;
-    fd_set errorset;
 
     /* tcp-only */
     const struct sockaddr* src_sockaddr;
@@ -356,27 +381,6 @@ struct uv_tcp_s {
     uv_close_cb close_cb;
     uv_connect_cb connect_cb;
     uv_write_cb write_cb;
-    
-    int bind : 1;
-
-    // Esto se puede cambiar a un solo uv_requests_tcp_t** que sea un struct con uv_request_t y tipo (por ejemplo)
-    uv_request_t** connect_requests;
-    int n_connect_requests;
-
-    uv_request_t** accept_requests;
-    int n_accept_requests;
-
-    uv_request_t** listen_requests;
-    int n_listen_requests;
-
-    uv_request_t** read_start_requests;
-    int n_read_start_requests;
-
-    uv_request_t** read_stop_requests;
-    int n_read_stop_requests;
-
-    uv_request_t** write_requests;
-    int n_write_requests;
 };
 
 struct uv_buf_s {
@@ -426,17 +430,15 @@ struct loopFSM_s
     int loop_is_starting : 1;
     int signal_isr_activated : 1;
 
-    uv_handle_t** active_handlers; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
+    uv_handle_t* active_handlers[40]; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
     int n_active_handlers; // number of signal handlers
+    int last_n_active_handlers;
     int n_handlers_run; // number of signal handlers that have been run
-
-    uv_request_t** active_requests;
-    int n_active_requests;
-    int all_requests_run : 1;
 };
 
 // Some function prototypes
 void uv_update_time (loopFSM_t* loop);
+void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 
 // Timer function protypes
 int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle);
@@ -452,12 +454,12 @@ int uv_signal_stop(uv_signal_t* handle);
 // Check function prototypes
 int uv_check_init(uv_loop_t* loop, uv_check_t* check);
 int uv_check_start(uv_check_t* handle, uv_check_cb cb);
-int uv_check_close(uv_check_t* handle);
+int uv_check_stop(uv_check_t* handle);
 
 // Loop function prototypes
 int uv_loop_init (uv_loop_t* loop);
 int uv_loop_close (uv_loop_t* loop);
-int uv_run (uv_loop_t* loop);
+int uv_run (uv_loop_t* loop, uv_run_mode mode);
 
 // TCP function prototypes
 int uv_tcp_init(uv_loop_t* loop_s, uv_tcp_t* tcp);
@@ -482,22 +484,13 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* ne
 int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
 int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset, uv_fs_cb cb);
 int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
+int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb);
+
+// work function prototypes
+int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb, uv_after_work_cb after_work_cb);
 
 // Core function prototypes
 int uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle);
 int uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle);
-int uv_insert_request(loopFSM_t* loop, uv_request_t* req);
-int uv_remove_request(loopFSM_t* loop, uv_request_t* req);
-int uv_insert_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type);
-int uv_remove_tcp(uv_tcp_t* tcp, uv_request_t* req, tcp_type type);
-
-// Request run implementations prototypes
-void run_connect_req(uv_request_t* req);
-void run_listen_req(uv_request_t* req);
-void run_accept_req(uv_request_t* req);
-void run_read_start_req(uv_request_t* req);
-void run_read_stop_req(uv_request_t* req);
-void run_write_req(uv_request_t* req);
-void run_fs_req(uv_request_t* req);
 
 #endif /* UV_H */

@@ -90,7 +90,7 @@ main_signal(void* ignore){
 
     ESP_LOGI("SIGNAL_START", "Segundo uv_signal_start en main_signal");
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN","Error durante uv_run");
     }
@@ -101,16 +101,21 @@ main_signal(void* ignore){
 // CHECK TEST
 
 #define LED_CHECK_TEST_PORT 14
-bool led_state = 0;
 
 // #define LED_DEBUG_PORT 5
 
 void
 check_callback (uv_check_t* handle){
+    static bool led_state = 0;
     gpio_set_level(LED_CHECK_TEST_PORT,(int)led_state);
     led_state = !led_state;
 }
 
+void
+check_callback2 (uv_check_t* handle){
+    static int count = 0;
+    ESP_LOGI("check_callback2","%d",count++);
+}
 
 void
 main_check(void* ignore){
@@ -145,15 +150,29 @@ main_check(void* ignore){
 
     ESP_LOGI("CHECK_INIT", "Primer signal inicializado en main_check");
 
-    // Aqui hay un error
     rv = uv_check_start(check_handle, check_callback);
+    if(rv != 0){
+        ESP_LOGE("CHECK_START","Error durante primer uv_check_start en main_check");
+    }
+
+    uv_check_t* check_handle2 = malloc(sizeof(uv_check_t));
+
+    rv = uv_check_init(loop, check_handle2);
+    if(rv != 0){
+        ESP_LOGE("CHECK_INIT","Error durante la primera inicializacion en main_check");
+    }
+
+    ESP_LOGI("CHECK_INIT", "Primer signal inicializado en main_check");
+
+    // Aqui hay un error
+    rv = uv_check_start(check_handle2, check_callback2);
     if(rv != 0){
         ESP_LOGE("CHECK_START","Error durante primer uv_check_start en main_check");
     }
 
     ESP_LOGI("CHECK_START", "Primer uv_check_start en main_check");
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN","Error durante uv_run");
     }
@@ -236,7 +255,7 @@ main_timer(void* ignore){
 
     ESP_LOGI("TIMER_START", "Second uv_timer_start success");
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN", "Error in uv_run in main_timer");
     }
@@ -400,7 +419,7 @@ main_tcp(void* ignore){
 
     ESP_LOGI("TCP_CONNECT", "uv_tcp_connect success"); 
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN", "Error in uv_run in main_tcp");
     }
@@ -653,7 +672,7 @@ main_fs(void* ignore){
 
     ESP_LOGI("SIGNAL_START", "Primer uv_signal_start en main_fs");
 
-    rv = uv_run(loop);
+    rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
         ESP_LOGE("UV_RUN", "Error in uv_run in main_fs");
     }
@@ -702,8 +721,8 @@ void app_main(void)
     ESP_LOGI("APP_MAIN", "FAT filesystem mounted succesfully");
 
     // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_check, "startup", 16384, NULL, 5, NULL);
+    xTaskCreate(main_check, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
-    xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
 }

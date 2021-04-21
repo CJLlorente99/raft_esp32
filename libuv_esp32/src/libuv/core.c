@@ -11,122 +11,61 @@
 
 int
 uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle){
-    int i = loop->n_active_handlers + 1; // array index
-
-    if(i == 1){
-        loop->active_handlers = malloc(sizeof(uv_handle_t*));
-        if(!loop->active_handlers){
-            ESP_LOGE("UV_INSERT_HANDLE", "Error pointer is NULL after malloc in uv_insert_handle");
-            return 1;
-        }
-            
-        memcpy(loop->active_handlers, &handle, sizeof(uv_handle_t*));
-    } else{
-        /* Make sure this handler is new */
-        for(int j = 0; j < loop->n_active_handlers; j++){
-            if(loop->active_handlers[j] == handle)
-                return 0;
-        }
-
-        loop->active_handlers = realloc(loop->active_handlers, i * sizeof(uv_handle_t*));
-        if(!loop->active_handlers){
-            ESP_LOGE("UV_INSERT_HANDLE", "Error pointer is NULL after malloc in uv_insert_handle");
-            return 1;
-        }
-        memcpy(&(loop->active_handlers[i-1]), &handle, sizeof(uv_handle_t*));
+    
+    /* Make sure this handler is new */
+    for(int j = 0; j < loop->n_active_handlers; j++){
+        if(loop->active_handlers[j] == handle)
+            return 0;
     }
 
-    loop->n_active_handlers = i;
+    loop->active_handlers[loop->n_active_handlers++] = handle;
 
     return 0;
 }
 
 int
 uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle){
-    // Allocate memory for new array of handlers
-    int new_n_active = loop->n_active_handlers - 1;
-    uv_handle_t** new_pointer = loop->active_handlers;
+    int j = 0;
 
-    if(new_n_active > 0){
-        new_pointer = malloc(new_n_active * sizeof(uv_handle_t*));
-
-        if(!new_pointer){
-            ESP_LOGE("UV_REMOVE_HANDLE", "Error new_pointer is NULL after malloc in uv_remove_handles");
-            return 1;
-        }
-
-        // Add handlers, except from the one stopped
-        int j = 0;
-        for(int i = 0; i < loop->n_active_handlers; i++){
-            if(loop->active_handlers[i] != handle){
-                memcpy(&(new_pointer[j++]), &(loop->active_handlers[i]), sizeof(uv_handle_t*));
-            }
+    for(int i = 0; i < loop->n_active_handlers; i++){
+        if(loop->active_handlers[i] != handle){
+            loop->active_handlers[j++] = loop->active_handlers[i];
         }
     }
 
-    loop->n_active_handlers = new_n_active;
-    loop->active_handlers = new_pointer;
+    loop->n_active_handlers--;
     free(handle);
+
+    ESP_LOGI("uv_remove_handle", "%d", loop->n_active_handlers);
 
     return 0;
 }
 
 int
 uv_insert_request(loopFSM_t* loop, uv_request_t* req){
-    int i = loop->n_active_requests + 1; // array index
 
-    if(i == 1){
-        loop->active_requests = malloc(sizeof(uv_request_t*));
-        if(!loop->active_requests){
-            ESP_LOGE("UV_INSERT_REQUESTS", "Error pointer is NULL after malloc in uv_insert_requests");
-            return 1;
-        }
-            
-        memcpy(loop->active_requests, &req, sizeof(uv_request_t*));
-    } else{
-        /* Make sure this requests is new */
-        for(int j = 0; j < loop->n_active_requests; j++){
-            if(loop->active_requests[j] == req)
-                return 0;
-        }
-
-        loop->active_requests = realloc(loop->active_requests, i * sizeof(uv_request_t*));
-        if(!loop->active_requests){
-            ESP_LOGE("UV_INSERT_REQUESTS", "Error pointer is NULL after malloc in uv_insert_requests");
-            return 1;
-        }
-        memcpy(&(loop->active_requests[i-1]), &req, sizeof(uv_request_t*));
+    /* Make sure this request is new */
+    for(int i = 0; i < loop->n_active_requests; i++){
+        if(loop->active_requests[i] == req)
+            return 0;
     }
 
-    loop->n_active_requests = i;
+    loop->active_requests[loop->n_active_requests++] = req;
 
     return 0;
 }
 
 int
 uv_remove_request(loopFSM_t* loop, uv_request_t* req){
-    // Allocate memory for new array of handlers
-    int new_n_active = loop->n_active_requests - 1;
-    uv_request_t** new_pointer = loop->active_requests;
+    int j = 0;
 
-    if(new_n_active > 0){
-        new_pointer = malloc(new_n_active * sizeof(uv_request_t*));
-        if(!new_pointer){
-            ESP_LOGE("UV_REMOVE_REQUESTS", "Error new_pointer is NULL after malloc in uv_remove_requests");
-            return 1;
-        }
-
-        // Add handlers, except from the one stopped
-        int j = 0;
-        for(int i = 0; i < loop->n_active_requests; i++){
-            if(loop->active_requests[i] != req){
-                memcpy(&(new_pointer[j++]), &(loop->active_requests[i]), sizeof(uv_request_t*));
-            }
+    for(int i = 0; i < loop->n_active_requests; i++){
+        if(loop->active_requests[i] != req){
+            loop->active_requests[j++] = loop->active_requests[i];
         }
     }
-    
-    loop->n_active_requests = new_n_active;
-    loop->active_requests = new_pointer;
+
+    loop->n_active_requests--;
     free(req);
 
     return 0;
