@@ -15,9 +15,6 @@ run_signal(uv_handle_t* handle){
         signal->signal_cb(signal, signal->signum);
         signal->intr_bit = 0;
     }
-    else{
-        signal->intr_bit = 0;
-    }
 }
 
 // virtual table for signal handlers

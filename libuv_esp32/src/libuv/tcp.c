@@ -133,186 +133,167 @@ run_tcp(uv_handle_t* handle){
         tcp->bind = 0;
     }
 
-    if(tcp->n_connect_requests > 0){ // connect es bloqueante?
-        for(int i = 0; i < tcp->n_connect_requests; i++){
-            uv_connect_t* req = (uv_connect_t*)tcp->connect_requests[i];
-            rv = connect(tcp->socket, req->dest_sockaddr, sizeof(struct sockaddr));
-            req->status = rv;
-            if(rv != 0){
-                // TODO
-                // No siempre que sea = -1 es error. Usar errno.h para saber que tipo de error ha sido y si debe volver a intentarse
-                ESP_LOGE("RUN_TCP_CONNECT", "Error during connect in run tcp: errno %d", errno);
-                return; 
-            }
-            // add request to be called in following state (run_requests)
-            // take out request from tcp object
-            rv = uv_insert_request(loop, tcp->connect_requests[i]);
-            if(rv != 0){
-                ESP_LOGE("RUN_TCP_CONNECT", "Error during uv_insert in run_tcp");
-                return;
-            }
-            rv = uv_remove_tcp(tcp, tcp->connect_requests[i], CONNECT);
-            if(rv != 0){
-                ESP_LOGE("RUN_TCP_CONNECT", "Error during uv_remove in run_tcp");
-                return;
-            }
+    for(int i = 0; i < tcp->n_connect_requests; i++){
+        uv_connect_t* req = (uv_connect_t*)tcp->connect_requests[i];
+        rv = connect(tcp->socket, req->dest_sockaddr, sizeof(struct sockaddr));
+        req->status = rv;
+        if(rv != 0){
+            // TODO
+            // No siempre que sea = -1 es error. Usar errno.h para saber que tipo de error ha sido y si debe volver a intentarse
+            ESP_LOGE("RUN_TCP_CONNECT", "Error during connect in run tcp: errno %d", errno);
+            return; 
+        }
+        // add request to be called in following state (run_requests)
+        // take out request from tcp object
+        rv = uv_insert_request(loop, tcp->connect_requests[i]);
+        if(rv != 0){
+            ESP_LOGE("RUN_TCP_CONNECT", "Error during uv_insert in run_tcp");
+            return;
+        }
+        rv = uv_remove_tcp(tcp, tcp->connect_requests[i], CONNECT);
+        if(rv != 0){
+            ESP_LOGE("RUN_TCP_CONNECT", "Error during uv_remove in run_tcp");
+            return;
         }
     }
 
-    if(tcp->n_listen_requests > 0){
-        for(int i = 0; i < tcp->n_listen_requests; i++){
-            uv_listen_t* req;
-            memcpy(&req,(uv_listen_t**)&tcp->listen_requests[i], sizeof(uv_listen_t*));
-            rv = listen(tcp->socket, 1);
-            req->status = rv;
-            if(rv != 0){
-                ESP_LOGE("RUN_TCP_LISTEN", "Error durign listen in run tcp: errno %d", errno);
-                return;
-            }
-            // add request to be called in following state (run_requests)
-            // take out  request from tcp object
-            rv = uv_insert_request(loop, tcp->listen_requests[i]);
-            if(rv != 0){
-                ESP_LOGE("RUN_TCP_LISTEN", "Error during uv_insert in run_tcp");
-                return;
-            }
-            rv = uv_remove_tcp(tcp, tcp->listen_requests[i], LISTEN);
-            if(rv != 0){
-                ESP_LOGE("RUN_TCP_LISTEN", "Error during uv_remove in run_tcp");
-                return;
-            }
+    for(int i = 0; i < tcp->n_listen_requests; i++){
+        uv_listen_t* req;
+        memcpy(&req,(uv_listen_t**)&tcp->listen_requests[i], sizeof(uv_listen_t*));
+        rv = listen(tcp->socket, 1);
+        req->status = rv;
+        if(rv != 0){
+            ESP_LOGE("RUN_TCP_LISTEN", "Error durign listen in run tcp: errno %d", errno);
+            return;
+        }
+        // add request to be called in following state (run_requests)
+        // take out  request from tcp object
+        rv = uv_insert_request(loop, tcp->listen_requests[i]);
+        if(rv != 0){
+            ESP_LOGE("RUN_TCP_LISTEN", "Error during uv_insert in run_tcp");
+            return;
+        }
+        rv = uv_remove_tcp(tcp, tcp->listen_requests[i], LISTEN);
+        if(rv != 0){
+            ESP_LOGE("RUN_TCP_LISTEN", "Error during uv_remove in run_tcp");
+            return;
         }
     }
 
     // accept es bloqueante, ver el fd y ver si hay algo que leer
-    if(tcp->n_accept_requests > 0){ 
-        for(int i = 0; i < tcp->n_accept_requests; i++){
-            uv_accept_t* req;
-            memcpy(&req, (uv_accept_t**)&tcp->accept_requests[i], sizeof(uv_accept_t*));
-            // select 
-            FD_ZERO(&(tcp->readset));
-            FD_SET(tcp->socket, &(tcp->readset));
+    for(int i = 0; i < tcp->n_accept_requests; i++){
+        uv_accept_t* req;
+        memcpy(&req, (uv_accept_t**)&tcp->accept_requests[i], sizeof(uv_accept_t*));
+        // select 
+        FD_ZERO(&(tcp->readset));
+        FD_SET(tcp->socket, &(tcp->readset));
 
-            if(select(tcp->socket + 1, &(tcp->readset), NULL, NULL, &tv)){
-                rv = accept(tcp->socket, NULL, NULL);
-                // TODO 
-                // añadir nuevo fd (que es la salida del accept)
-                // que hacer?
-                // 1) ir iterando por los sockets haciendo select
-                // https://www.tenouk.com/Module41.html
-                if(rv == -1){
-                    ESP_LOGE("RUN_TCP_ACCEPT", "Error during accept in run tcp: errno %d", errno);
-                    return;
-                }
-                char addr;
-                struct sockaddr name;
-                socklen_t len;
-                getpeername(rv,&name,&len);
-                inet_ntop(AF_INET, &(((struct sockaddr_in*)&name)->sin_addr), &addr, len);
-                ESP_LOGI("RUN_TCP_ACCEPT", "accepting : %s", &addr);
-                req->client->socket = rv;
-                // take out request from tcp object
-                rv = uv_insert_request(loop, tcp->accept_requests[i]);
-                if(rv != 0){
-                    ESP_LOGE("RUN_TCP_ACCEPT", "Error during uv_insert in run_tcp");
-                    return;
-                }
-                rv = uv_remove_tcp(tcp, tcp->accept_requests[i], ACCEPT);
-                if(rv != 0){
-                    ESP_LOGE("RUN_TCP_ACCEPT", "Error during uv_remove in run_tcp");
-                    return;
-                }
-            }
-        }
-    }
-
-    if(tcp->n_read_start_requests > 0){ 
-        for(int i = 0; i < tcp->n_read_start_requests; i++){
-            uv_read_start_t* req;
-            memcpy(&req, (uv_read_start_t**)&tcp->read_start_requests[i], sizeof(uv_read_start_t*));
-            FD_ZERO(&(tcp->readset));
-            FD_SET(tcp->socket, &(tcp->readset));
-
-            if(select(tcp->socket + 1, &(tcp->readset), NULL, NULL, &tv) && req->is_alloc){
-                // no se debería utilizar nread para saber cuanto falta por completar del buffer
-                // req->buf->base + nread, req->buf->len - nread
-                // CUIDADO, raft aumenta el mismo buf.base y reduce buf.len
-                // ssize_t nread = read(tcp->socket, req->buf->base, req->buf->len);
-                // req->nread = nread;
-                ssize_t nread = read(tcp->socket, req->buf->base + req->nread, req->buf->len - req->nread);
-                req->nread += nread;
-                if(nread < 0){
-                    ESP_LOGE("RUN_TCP_READ_START", "Error during read in run_tcp: errno %d", errno);
-                }
-            }
-            rv = uv_insert_request(loop, (uv_request_t*)req);
-            if(rv != 0){
-                ESP_LOGE("RUN_TCP_READ_START", "Error during uv_insert in run_tcp");
+        if(select(tcp->socket + 1, &(tcp->readset), NULL, NULL, &tv)){
+            rv = accept(tcp->socket, NULL, NULL);
+            if(rv == -1){
+                ESP_LOGE("RUN_TCP_ACCEPT", "Error during accept in run tcp: errno %d", errno);
                 return;
             }
-            // DO NOT uv_remove the read start request (uv_read_stop is the one doing that)
-        }
-    }
-
-    if(tcp->n_read_stop_requests > 0){
-        for(int i = 0; i < tcp->n_read_stop_requests; i++){
-            uv_read_stop_t* req;
-            memcpy(&req, (uv_read_stop_t**)&tcp->read_stop_requests[i], sizeof(uv_read_stop_t*));
-
-            /* Stop the correspoding read_start_request */
-            for(int j = 0; j < tcp->n_read_start_requests; j++){
-                if(((uv_read_start_t*)tcp->read_start_requests[j])->stream == req->stream){
-                    req->read_start_req = tcp->read_start_requests[j];
-                    rv = uv_remove_tcp(tcp, tcp->read_start_requests[j], READ_START);
-                    if(rv != 0){
-                        ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_remove in run_tcp");
-                        return;
-                    }
-                }
-            }
-            
-            rv = uv_remove_tcp(tcp, tcp->read_stop_requests[i], READ_STOP);
+            char addr;
+            struct sockaddr name;
+            socklen_t len;
+            getpeername(rv,&name,&len);
+            inet_ntop(AF_INET, &(((struct sockaddr_in*)&name)->sin_addr), &addr, len);
+            ESP_LOGI("RUN_TCP_ACCEPT", "accepting : %s", &addr);
+            req->client->socket = rv;
+            // take out request from tcp object
+            rv = uv_insert_request(loop, tcp->accept_requests[i]);
             if(rv != 0){
-                ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_remove in run_tcp");
+                ESP_LOGE("RUN_TCP_ACCEPT", "Error during uv_insert in run_tcp");
                 return;
             }
-
-            rv = uv_insert_request(loop, (uv_request_t*)req);
+            rv = uv_remove_tcp(tcp, tcp->accept_requests[i], ACCEPT);
             if(rv != 0){
-                ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_insert in run_tcp");
+                ESP_LOGE("RUN_TCP_ACCEPT", "Error during uv_remove in run_tcp");
                 return;
             }
         }
     }
 
-    if(tcp->n_write_requests > 0){ 
-        for(int i = 0; i < tcp->n_write_requests; i++){
-            uv_write_t* req;
-            memcpy(&req, (uv_write_t**)&tcp->write_requests[i], sizeof(uv_write_t*));
-            uv_stream_t* client = req->stream;
+    for(int i = 0; i < tcp->n_read_start_requests; i++){
+        uv_read_start_t* req;
+        memcpy(&req, (uv_read_start_t**)&tcp->read_start_requests[i], sizeof(uv_read_start_t*));
+        FD_ZERO(&(tcp->readset));
+        FD_SET(tcp->socket, &(tcp->readset));
 
-            FD_ZERO(&(client->writeset));
-            FD_SET(client->socket, &(client->writeset));
-            if(select(client->socket + 1, NULL, &(client->writeset), NULL, &tv)){
-                ESP_LOGI("RUN_TCP_WRITE", "%s %d", req->bufs->base, req->bufs->len);
-                rv = write(client->socket, req->bufs->base, req->nbufs * req->bufs->len);
-                ESP_LOGI("RUN_TCP_WRITE", "Written");
-                req->status = rv;
-                if(rv < 0){
-                    ESP_LOGE("RUN_TCP_WRITE", "Error during write in run_tcp: errno %d", errno);
-                }
+        if(select(tcp->socket + 1, &(tcp->readset), NULL, NULL, &tv) && req->is_alloc){
+            // CUIDADO, raft aumenta el mismo buf.base y reduce buf.len
+            // ssize_t nread = read(tcp->socket, req->buf->base, req->buf->len);
+            // req->nread = nread;
+            ssize_t nread = read(tcp->socket, req->buf->base + req->nread, req->buf->len - req->nread);
+            req->nread += nread;
+            if(nread < 0){
+                ESP_LOGE("RUN_TCP_READ_START", "Error during read in run_tcp: errno %d", errno);
+            }
+        }
+        rv = uv_insert_request(loop, (uv_request_t*)req);
+        if(rv != 0){
+            ESP_LOGE("RUN_TCP_READ_START", "Error during uv_insert in run_tcp");
+            return;
+        }
+        // DO NOT uv_remove the read start request (uv_read_stop is the one doing that)
+    }
 
-                rv = uv_insert_request(loop, tcp->write_requests[i]);
+    for(int i = 0; i < tcp->n_read_stop_requests; i++){
+        uv_read_stop_t* req;
+        memcpy(&req, (uv_read_stop_t**)&tcp->read_stop_requests[i], sizeof(uv_read_stop_t*));
+
+        /* Stop the correspoding read_start_request */
+        for(int j = 0; j < tcp->n_read_start_requests; j++){
+            if(((uv_read_start_t*)tcp->read_start_requests[j])->stream == req->stream){
+                req->read_start_req = tcp->read_start_requests[j];
+                rv = uv_remove_tcp(tcp, tcp->read_start_requests[j], READ_START);
                 if(rv != 0){
-                    ESP_LOGE("RUN_TCP_WRITE", "Error during uv_insert in run_tcp");
+                    ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_remove in run_tcp");
                     return;
                 }
+            }
+        }
+        
+        rv = uv_remove_tcp(tcp, tcp->read_stop_requests[i], READ_STOP);
+        if(rv != 0){
+            ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_remove in run_tcp");
+            return;
+        }
 
-                rv = uv_remove_tcp(tcp, tcp->write_requests[i], WRITE);
-                if(rv != 0){
-                    ESP_LOGE("RUN_TCP_WRITE", "Error during uv_remove in run_tcp");
-                    return;
-                }
+        rv = uv_insert_request(loop, (uv_request_t*)req);
+        if(rv != 0){
+            ESP_LOGE("RUN_TCP_READ_STOP", "Error during uv_insert in run_tcp");
+            return;
+        }
+    }
+
+    for(int i = 0; i < tcp->n_write_requests; i++){
+        uv_write_t* req;
+        memcpy(&req, (uv_write_t**)&tcp->write_requests[i], sizeof(uv_write_t*));
+        uv_stream_t* client = req->stream;
+
+        FD_ZERO(&(client->writeset));
+        FD_SET(client->socket, &(client->writeset));
+        if(select(client->socket + 1, NULL, &(client->writeset), NULL, &tv)){
+            ESP_LOGI("RUN_TCP_WRITE", "%s %d", req->bufs->base, req->bufs->len);
+            rv = write(client->socket, req->bufs->base, req->nbufs * req->bufs->len);
+            ESP_LOGI("RUN_TCP_WRITE", "Written");
+            req->status = rv;
+            if(rv < 0){
+                ESP_LOGE("RUN_TCP_WRITE", "Error during write in run_tcp: errno %d", errno);
+            }
+
+            rv = uv_insert_request(loop, tcp->write_requests[i]);
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP_WRITE", "Error during uv_insert in run_tcp");
+                return;
+            }
+
+            rv = uv_remove_tcp(tcp, tcp->write_requests[i], WRITE);
+            if(rv != 0){
+                ESP_LOGE("RUN_TCP_WRITE", "Error during uv_remove in run_tcp");
+                return;
             }
         }
     }

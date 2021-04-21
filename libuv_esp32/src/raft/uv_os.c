@@ -69,6 +69,7 @@ static int uvOsFallocateEmulation(int fd, off_t offset, off_t len)
 
 int UvOsFallocate(uv_file fd, off_t offset, off_t len)
 {
+    // TODO (maybe use f_expand)
     int rv;
     rv = posix_fallocate(fd, offset, len);
     if (rv != 0) {
@@ -83,6 +84,7 @@ int UvOsFallocate(uv_file fd, off_t offset, off_t len)
         /* This might be a libc implementation (e.g. musl) that doesn't
          * implement a transparent fallback if fallocate() is not supported
          * by the underlying file system. */
+        // Maybe just delete?
         rv = uvOsFallocateEmulation(fd, offset, len);
         if (rv != 0) {
             return -EOPNOTSUPP;

@@ -341,6 +341,7 @@ err:
 
 bool UvFsIsAtEof(uv_file fd)
 {
+    // TODO change from lseek to fatfs compatible
     off_t offset;
     off_t size;
     offset = lseek(fd, 0, SEEK_CUR); /* Get the current offset */
@@ -352,8 +353,10 @@ bool UvFsIsAtEof(uv_file fd)
 int UvFsReadInto(uv_file fd, struct raft_buffer *buf, char *errmsg)
 {
     int rv;
+    uv_fs_t req;
     /* TODO: use uv_fs_read() */
-    rv = (int)read(fd, buf->base, buf->len);
+    // rv = (int)read(fd, buf->base, buf->len);
+    rv = uv_fs_read(NULL, &req, fd, buf, 1, 0, NULL);
     if (rv == -1) {
         UvOsErrMsg(errmsg, "read", -errno);
         return RAFT_IOERR;
