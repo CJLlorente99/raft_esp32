@@ -4,8 +4,6 @@
 /* Init function. Initializes a socket */
 int
 uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp){
-    int rv;
-
     tcp->self.loop = loop;
     tcp->self.type = UV_TCP;
     tcp->self.vtbl = NULL;

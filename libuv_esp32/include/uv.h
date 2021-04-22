@@ -172,7 +172,7 @@ typedef void (*uv_timer_cb)(uv_timer_t* handle);
 
 // For stream/tcp purposes
 typedef void (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
-typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
+typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, uv_buf_t* buf);
 typedef void (*uv_connection_cb)(uv_stream_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
