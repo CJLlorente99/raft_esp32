@@ -231,7 +231,7 @@ run_read_stop_handle(uv_handle_t* handle){
     for(int i = 0; i < loop->n_active_handlers; i++){
         if(loop->active_handlers[i]->type == UV_READ_START){
             uv_read_start_t* read_start_handle = (uv_read_start_t*)loop->active_handlers[i];
-            if(read_start_handle->stream = read_stop_handle->stream){
+            if(read_start_handle->stream == read_stop_handle->stream){
                 rv = uv_remove_handle(loop, loop->active_handlers[i]);
                 if(rv != 0){
                     ESP_LOGE("run_read_stop_handle", "Error during uv_remove in run_read_stop_handle");

@@ -559,42 +559,40 @@ info(uv_signal_t* handle, int signum){
     int rv;
     int n;
     FIL file;
-    FRESULT fr;
-    uv_fs_t* req = malloc(sizeof(uv_fs_t));
-    memset(req, 0, sizeof(uv_fs_t));
-    uv_dirent_t* ent = malloc(sizeof(uv_dirent_t));
+    uv_fs_t req;
+    uv_dirent_t ent;
     const char* path1 = "dir1";
 
     ESP_LOGI("INFO", "uv_fs_scandir");
-    n = uv_fs_scandir(NULL, req, path1, 0, NULL);
+    n = uv_fs_scandir(NULL, &req, path1, 0, NULL);
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
     ESP_LOGI("INFO", "print results");
-    char* buf;
-    UINT br; 
+    uv_buf_t buf;
+
     for(int i = 0; i < n; i++){
         ESP_LOGI("INFO", "uv_fs_scandir_next");
-        rv = uv_fs_scandir_next(req, ent);
+        rv = uv_fs_scandir_next(&req, &ent);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_scandir_next");
         }
-        ESP_LOGI("INFO", "File name is %s", ent->name);
-        file = uv_fs_open(NULL, req, ent->name, UV_FS_O_RDONLY, 0, NULL);
-        rv = uv_fs_stat(NULL, req, ent->name, NULL);
-        buf = malloc(req->statbuf.st_size);
-        fr = f_read(&file, buf, req->statbuf.st_size, &br);
-        if(fr != FR_OK){
-            ESP_LOGE("INFO", "f_read");
-        }
+        ESP_LOGI("INFO", "File name is %s", ent.name);
+        ESP_LOGI("INFO", "uv_fs_open");
+        file = uv_fs_open(NULL, &req, ent.name, UV_FS_O_RDONLY, 0, NULL);
+        ESP_LOGI("INFO", "uv_fs_stat");
+        rv = uv_fs_stat(NULL, &req, ent.name, NULL);
+        ESP_LOGI("INFO", "uv_fs_read");
+        buf.len = req.statbuf.st_size;
+        buf.base = malloc(buf.len);
+        rv = uv_fs_read(NULL, &req, file, &buf, 1, 0, NULL);
 
-        ESP_LOGI("INFO", "Tamaño %u, leidos %u", req->statbuf.st_size, br);
-        for(int i = 0; i < req->statbuf.st_size; i++){
-            ESP_LOGI("INFO", "%c", buf[i]);
+        for(int i = 0; i < req.statbuf.st_size; i++){
+            ESP_LOGI("INFO", "%c", buf.base[i]);
         }
         // ESP_LOGI("INFO", "%s %d %d", buf, strlen(buf), br);
-        free(buf);
 
-        rv = uv_fs_close(NULL, req, file, NULL);
+        ESP_LOGI("INFO", "uv_fs_close");
+        rv = uv_fs_close(NULL, &req, file, NULL);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_close");
         }
@@ -721,8 +719,8 @@ void app_main(void)
     ESP_LOGI("APP_MAIN", "FAT filesystem mounted succesfully");
 
     // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
-    xTaskCreate(main_check, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_check, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
+    xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
 }
