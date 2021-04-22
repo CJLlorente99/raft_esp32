@@ -30,7 +30,7 @@ uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp){
         return 1;
     }
 
-    // setsockopt()?
+    // setsocketopt?
 
     return 0;
 }
@@ -95,11 +95,11 @@ run_connect_handle(uv_handle_t* handle){
     rv = connect(connect_handle->tcp->socket, connect_handle->dest_sockaddr, sizeof(struct sockaddr));
     connect_handle->status = rv;
     if(rv != 0){
-        // TODO
-        // No siempre que sea = -1 es error. Usar errno.h para saber que tipo de error ha sido y si debe volver a intentarse
         ESP_LOGE("run_connect_handle", "Error during connect in run_connect_handle: errno %d", errno);
-        return; 
+        return;
     }
+        // TODO
+        // No siempre que sea = -1 es error. Usar errno para saber que tipo de error ha sido y si debe volver a intentarse
 
     connect_handle->cb(connect_handle, connect_handle->status);
 

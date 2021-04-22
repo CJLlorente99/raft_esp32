@@ -231,7 +231,7 @@ run_read_stop_handle(uv_handle_t* handle){
     for(int i = 0; i < loop->n_active_handlers; i++){
         if(loop->active_handlers[i]->type == UV_READ_START){
             uv_read_start_t* read_start_handle = (uv_read_start_t*)loop->active_handlers[i];
-            if(read_start_handle->stream = read_stop_handle->stream){
+            if(read_start_handle->stream == read_stop_handle->stream){
                 rv = uv_remove_handle(loop, loop->active_handlers[i]);
                 if(rv != 0){
                     ESP_LOGE("run_read_stop_handle", "Error during uv_remove in run_read_stop_handle");
@@ -284,7 +284,7 @@ uv_read_stop(uv_stream_t* stream){
 void
 run_write_handle(uv_handle_t* handle){
     int rv;
-    uv_write_t* write_handle = (uv_write_t*)write_handle;
+    uv_write_t* write_handle = (uv_write_t*)handle;
 
     struct timeval tv;
     tv.tv_sec = 0;
@@ -298,7 +298,7 @@ run_write_handle(uv_handle_t* handle){
         rv = write(write_handle->stream->socket, write_handle->bufs->base, write_handle->nbufs * write_handle->bufs->len);
         write_handle->status = rv;
         if(rv < 0){
-            ESP_LOGE("RUN_TCP_WRITE", "Error during write in run_tcp: errno %d", errno);
+            ESP_LOGE("run_write_handle", "Error during write in run_tcp: errno %d", errno);
         }
 
         if(rv != write_handle->nbufs * write_handle->bufs->len){
@@ -333,10 +333,10 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     req->req.type = UV_UNKNOWN_HANDLE;
     req->req.vtbl = &write_handle_vtbl;
 
-    req->bufs = NULL;
+    req->bufs = bufs;
     req->cb = cb;
     req->loop = handle->loop;
-    req->nbufs = -1;
+    req->nbufs = nbufs;
     req->status = 0;
     req->stream = handle;
     req->type = UV_UNKNOWN_HANDLE;

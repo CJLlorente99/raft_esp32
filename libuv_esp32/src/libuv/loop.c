@@ -37,6 +37,7 @@ static void
 run_handlers (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
     p_this->loop_is_starting = 0;
+    p_this->n_handlers_run = 0;
     uv_update_time(p_this);
     p_this->last_n_active_handlers = p_this->n_active_handlers;
     for(int i = 0; i < p_this->last_n_active_handlers; i++){
@@ -111,6 +112,7 @@ int
 uv_run (uv_loop_t* loop, uv_run_mode mode){ // uv_run_mode is not neccesary as only one mode is used in raft
     portTickType xLastTime = xTaskGetTickCount();
     const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
+    ESP_LOGI("uv_run", "Entering uv_run");
     while(true){
         fsm_fire(loop->loopFSM);
         // añadir sleep mode (CUIDADO CON LAS WIFI Y LAS CONEXIONES TCP)
@@ -141,7 +143,7 @@ handle_run(uv_handle_t* handle){
 void
 uv_close(uv_handle_t* handle, uv_close_cb close_cb){
     int rv = 0;
-    rv = uv_remove_handle(handle->loop->loopFSM, handle);
+    rv = uv_remove_handle(handle->loop->loopFSM->user_data, handle);
     if(rv != 0){
         ESP_LOGE("UV_CLOSE", "Error when calling uv_remove_handle in uv_close");
     }
