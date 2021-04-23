@@ -2,7 +2,6 @@
 
 // Variables
 static FlagsType flags;
-static TreeFSM treeFSM;
 
 // FSM states
 enum states {
@@ -104,7 +103,8 @@ fsm_t* fsm_new_treeFSM ()
 
 	flags.color = 0;
 
-    treeFSM.color_shining = 0;
+    TreeFSM* treeFSM = malloc(sizeof(TreeFSM));
+    treeFSM->color_shining = 0;
 
 	GPIO_OUTPUT_SET(YELLOW_LED,1);
 	GPIO_OUTPUT_SET(BLUE_LED, 1);
@@ -112,7 +112,7 @@ fsm_t* fsm_new_treeFSM ()
 
 	srand(1);
 
-	return fsm_new (IDLE, treeFSM_tt, &treeFSM);
+	return fsm_new (IDLE, treeFSM_tt, treeFSM);
 }
 
 // Function to change to random color
@@ -121,13 +121,4 @@ void
 new_random_color (){
 	int r = (rand() % 3) + 1; // random number between 1 and 3
 	flags.color = r;
-}
-
-int updateTreeFSM(fsm_t* fsm, TreeFSM* newData){
-    // TODO
-    return 0;
-}
-int fillSnapshot(fsm_t* fsm, TreeFSM* newData){
-    // TODO
-    return 0;
 }

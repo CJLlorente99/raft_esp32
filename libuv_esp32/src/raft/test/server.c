@@ -3,9 +3,6 @@
 #include "uv.h"
 #include "raft/uv.h"
 
-// TODO
-// Include raft headers
-
 #define N_SERVERS 3    /* Number of servers in the example cluster */
 #define APPLY_RATE 125 /* Apply a new entry every 125 milliseconds */
 
@@ -20,10 +17,7 @@ static int FsmApply(struct raft_fsm *fsm,
     }
     TreeFSM *newFSMdata = buf->base;
 
-    rv = updateTreeFSM(f->user_data, newFSMdata);
-    if(rv != 0){
-        // do something cause error might have ocurred
-    }
+    memcpy(f->user_data, newFSMdata, sizeof(TreeFSM));
 
     *result = NULL; // used for cb called after aplying to FSM
     return 0;
@@ -45,10 +39,8 @@ static int FsmSnapshot(struct raft_fsm *fsm,
     if ((*bufs)[0].base == NULL) {
         return RAFT_NOMEM;
     }
-    rv = fillSnapshot((*bufs)[0].base, f->user_data);
-    if(rv != 0){
-        // do something cause error has ocurred
-    }
+
+    memcpy((*bufs)[0].base, f->user_data, sizeof(TreeFSM));
     return 0;
 }
 
@@ -60,23 +52,16 @@ static int FsmRestore(struct raft_fsm *fsm, struct raft_buffer *buf)
     if (buf->len != sizeof(TreeFSM)) {
         return RAFT_MALFORMED;
     }
-    rv = updateTreeFSM(f, (buf->base));
-    if(rv != 0){
-        // do something cause error has ocurred
-    }
+    memcpy(buf->base, f->user_data, sizeof(TreeFSM));
+
     raft_free(buf->base);
     return 0;
 }
 
 static int FsmInit(struct raft_fsm *fsm)
 {
-    struct fsm_t *f = raft_malloc(sizeof (fsm_t));
-    if (f == NULL) {
-        return RAFT_NOMEM;
-    }
-    f = fsm_new_treeFSM();
     fsm->version = 1;
-    fsm->data = f;
+    fsm->data = fsm_new_treeFSM();
     fsm->apply = FsmApply;
     fsm->snapshot = FsmSnapshot;
     fsm->restore = FsmRestore;
