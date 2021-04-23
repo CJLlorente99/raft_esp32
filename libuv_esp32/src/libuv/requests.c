@@ -47,10 +47,7 @@ run_accept_req(uv_request_t* req){
 
 void
 run_read_start_req(uv_request_t* req){
-    int rv;
     uv_read_start_t* read_start_req = (uv_read_start_t*) req;
-    loopFSM_t* loop = read_start_req->loop->loopFSM->user_data;
-
     if(read_start_req->alloc_cb){
         uv_buf_t* buf = malloc(sizeof(uv_buf_t));
         buf->len = 4*1024;

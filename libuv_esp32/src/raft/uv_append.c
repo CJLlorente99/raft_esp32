@@ -432,7 +432,6 @@ static void uvAliveSegmentPrepareCb(struct uvPrepare *req, int status)
     }
 
     assert(req->counter > 0);
-    assert(req->fd >= 0);
 
     /* There must be pending appends that were waiting for this prepare
      * requests. */
@@ -503,7 +502,7 @@ static int uvAppendPushAliveSegment(struct uv *uv)
 
     /* If we've been returned a ready prepared segment right away, start writing
      * to it immediately. */
-    if (fd != -1) {
+    if (fd) {
         rv = uvAliveSegmentReady(uv, fd, counter, segment);
         if (rv != 0) {
             goto err_after_prepare;

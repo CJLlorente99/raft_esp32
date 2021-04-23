@@ -37,58 +37,14 @@ int UvOsClose(uv_file fd)
     return uv_fs_close(NULL, &req, fd, NULL);
 }
 
-/* Emulate fallocate(). Mostly taken from glibc's implementation. */
-static int uvOsFallocateEmulation(int fd, off_t offset, off_t len)
-{
-    ssize_t increment;
-    struct statfs f;
-    int rv;
-
-    rv = fstatfs(fd, &f);
-    if (rv != 0) {
-        return errno;
-    }
-
-    if (f.f_bsize == 0) {
-        increment = 512;
-    } else if (f.f_bsize < 4096) {
-        increment = f.f_bsize;
-    } else {
-        increment = 4096;
-    }
-
-    for (offset += (len - 1) % increment; len > 0; offset += increment) {
-        len -= increment;
-        rv = (int)pwrite(fd, "", 1, offset);
-        if (rv != 1)
-            return errno;
-    }
-
-    return 0;
-}
-
 int UvOsFallocate(uv_file fd, off_t offset, off_t len)
 {
     // TODO (maybe use f_expand)
-    int rv;
-    rv = posix_fallocate(fd, offset, len);
-    if (rv != 0) {
-        /* From the manual page:
-         *
-         *   posix_fallocate() returns zero on success, or an error number on
-         *   failure.  Note that errno is not set.
-         */
-        if (rv != EOPNOTSUPP) {
-            return -rv;
-        }
-        /* This might be a libc implementation (e.g. musl) that doesn't
-         * implement a transparent fallback if fallocate() is not supported
-         * by the underlying file system. */
-        // Maybe just delete?
-        rv = uvOsFallocateEmulation(fd, offset, len);
-        if (rv != 0) {
-            return -EOPNOTSUPP;
-        }
+    FRESULT fr;
+    fr = f_expand(fd, len, 1);
+    if (fr != 0) {
+        ESP_LOGE("UvOsFallocate", "%d", fr);
+        return 1;
     }
     return 0;
 }
@@ -153,16 +109,6 @@ void UvOsJoin(const char *dir, const char *filename, char *path)
     strcat(path, filename);
 }
 
-int UvOsIoSetup(unsigned nr, aio_context_t *ctxp)
-{
-    int rv;
-    rv = io_setup(nr, ctxp);
-    if (rv == -1) {
-        return -errno;
-    }
-    return 0;
-}
-
 int UvOsIoDestroy(aio_context_t ctx)
 {
     int rv;
@@ -214,16 +160,4 @@ int UvOsEventfd(unsigned int initval, int flags)
         return -errno;
     }
     return rv;
-}
-
-int UvOsSetDirectIo(uv_file fd)
-{
-    int flags; /* Current fcntl flags */
-    int rv;
-    flags = fcntl(fd, F_GETFL);
-    rv = fcntl(fd, F_SETFL, flags | UV_FS_O_DIRECT);
-    if (rv == -1) {
-        return -errno;
-    }
-    return 0;
 }

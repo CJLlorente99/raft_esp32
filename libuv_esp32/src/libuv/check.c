@@ -1,24 +1,25 @@
 #include "uv.h"
 
-// run implementation for signals
+/* Run function, vtbl and uv_check */
 void
 run_check(uv_handle_t* handle){
     uv_check_t* check = (uv_check_t*) handle;
     check->cb(check);
 }
 
-// virtual table for check handlers
 static handle_vtbl_t check_vtbl = {
     .run = run_check
 };
 
 int
 uv_check_init(uv_loop_t* loop, uv_check_t* check){
-    check->loop = loop;
+    check->self.loop = loop;
+    check->self.type = UV_CHECK;
     check->self.vtbl = &check_vtbl;
-    check->type = UV_CHECK;
 
     check->cb = NULL;
+    check->loop = loop;
+    check->type = UV_CHECK;
 
     return 0;
 }
@@ -28,7 +29,7 @@ uv_check_start(uv_check_t* handle, uv_check_cb cb){
     loopFSM_t* loop = handle->loop->loopFSM->user_data;
     int rv;
 
-    // Check if handle is already present, if it is, just change cb
+    /* Check if handle is already present, if there is, just change cb */
     for(int i = 0; i < loop->n_active_handlers; i++){
         if(loop->active_handlers[i] == (uv_handle_t*)handle){
             handle->cb = cb;
@@ -36,7 +37,7 @@ uv_check_start(uv_check_t* handle, uv_check_cb cb){
         }
     }
 
-    // If not, add it to active handlers
+    /* Else, add it to active handlers */
     handle->cb = cb;
 
     rv = uv_insert_handle(loop, (uv_handle_t*)handle);

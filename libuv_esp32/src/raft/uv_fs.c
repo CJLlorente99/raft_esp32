@@ -2,7 +2,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/vfs.h>
 #include <unistd.h>
 
 #include "assert.h"
@@ -341,21 +340,13 @@ err:
 
 bool UvFsIsAtEof(uv_file fd)
 {
-    // TODO change from lseek to fatfs compatible
-    off_t offset;
-    off_t size;
-    offset = lseek(fd, 0, SEEK_CUR); /* Get the current offset */
-    size = lseek(fd, 0, SEEK_END);   /* Get file size */
-    lseek(fd, offset, SEEK_SET);     /* Restore current offset */
-    return offset == size;           /* Compare current offset and size */
+    return f_eof(fd) != 0;           /* Compare current offset and size */
 }
 
 int UvFsReadInto(uv_file fd, struct raft_buffer *buf, char *errmsg)
 {
     int rv;
     uv_fs_t req;
-    /* TODO: use uv_fs_read() */
-    // rv = (int)read(fd, buf->base, buf->len);
     rv = uv_fs_read(NULL, &req, fd, buf, 1, 0, NULL);
     if (rv == -1) {
         UvOsErrMsg(errmsg, "read", -errno);
@@ -509,221 +500,13 @@ err:
     return RAFT_IOERR;
 }
 
-/* Check if direct I/O is possible on the given fd. */
-static int probeDirectIO(int fd, size_t *size, char *errmsg)
-{
-    struct statfs fs_info; /* To check the file system type. */
-    void *buf;             /* Buffer to use for the probe write. */
-    int rv;
-
-    rv = UvOsSetDirectIo(fd);
-    if (rv != 0) {
-        if (rv != UV_EINVAL) {
-            /* UNTESTED: the parameters are ok, so this should never happen. */
-            UvOsErrMsg(errmsg, "fnctl", rv);
-            return RAFT_IOERR;
-        }
-        rv = fstatfs(fd, &fs_info);
-        if (rv == -1) {
-            /* UNTESTED: in practice ENOMEM should be the only failure mode */
-            UvOsErrMsg(errmsg, "fstatfs", -errno);
-            return RAFT_IOERR;
-        }
-        switch (fs_info.f_type) {
-            case 0x01021994: /* TMPFS_MAGIC */
-            case 0x2fc12fc1: /* ZFS magic */
-            case 0x24051905: /* UBIFS Suprt magic */
-                *size = 0;
-                return 0;
-            default:
-                /* UNTESTED: this is an unsupported file system. */
-#if defined(__s390x__)
-                ErrMsgPrintf(errmsg, "unsupported file system: %ux",
-                             fs_info.f_type);
-#else
-                ErrMsgPrintf(errmsg, "unsupported file system: %zx",
-                             fs_info.f_type);
-#endif
-                return RAFT_IOERR;
-        }
-    }
-
-    /* Try to peform direct I/O, using various buffer size. */
-    *size = 4096;
-    while (*size >= 512) {
-        buf = raft_aligned_alloc(*size, *size);
-        if (buf == NULL) {
-            ErrMsgOom(errmsg);
-            return RAFT_NOMEM;
-        }
-        memset(buf, 0, *size);
-        rv = (int)write(fd, buf, *size);
-        raft_aligned_free(*size, buf);
-        if (rv > 0) {
-            /* Since we fallocate'ed the file, we should never fail because of
-             * lack of disk space, and all bytes should have been written. */
-            assert(rv == (int)(*size));
-            return 0;
-        }
-        assert(rv == -1);
-        if (errno != EIO && errno != EOPNOTSUPP) {
-            /* UNTESTED: this should basically fail only because of disk errors,
-             * since we allocated the file with posix_fallocate. */
-
-            /* FIXME: this is a workaround because shiftfs doesn't return EINVAL
-             * in the fnctl call above, for example when the underlying fs is
-             * ZFS. */
-            if (errno == EINVAL && *size == 4096) {
-                *size = 0;
-                return 0;
-            }
-
-            UvOsErrMsg(errmsg, "write", -errno);
-            return RAFT_IOERR;
-        }
-        *size = *size / 2;
-    }
-
-    *size = 0;
-    return 0;
-}
-
-#if defined(RWF_NOWAIT)
-/* Check if fully non-blocking async I/O is possible on the given fd. */
-static int probeAsyncIO(int fd, size_t size, bool *ok, char *errmsg)
-{
-    void *buf;                  /* Buffer to use for the probe write */
-    aio_context_t ctx = 0;      /* KAIO context handle */
-    struct iocb iocb;           /* KAIO request object */
-    struct iocb *iocbs = &iocb; /* Because the io_submit() API sucks */
-    struct io_event event;      /* KAIO response object */
-    int n_events;
-    int rv;
-
-    /* Setup the KAIO context handle */
-    rv = UvOsIoSetup(1, &ctx);
-    if (rv != 0) {
-        UvOsErrMsg(errmsg, "io_setup", rv);
-        /* UNTESTED: in practice this should fail only with ENOMEM */
-        return RAFT_IOERR;
-    }
-
-    /* Allocate the write buffer */
-    buf = raft_aligned_alloc(size, size);
-    if (buf == NULL) {
-        ErrMsgOom(errmsg);
-        return RAFT_NOMEM;
-    }
-    memset(buf, 0, size);
-
-    /* Prepare the KAIO request object */
-    memset(&iocb, 0, sizeof iocb);
-    iocb.aio_lio_opcode = IOCB_CMD_PWRITE;
-    *((void **)(&iocb.aio_buf)) = buf;
-    iocb.aio_nbytes = size;
-    iocb.aio_offset = 0;
-    iocb.aio_fildes = (uint32_t)fd;
-    iocb.aio_reqprio = 0;
-    iocb.aio_rw_flags |= RWF_NOWAIT | RWF_DSYNC;
-
-    /* Submit the KAIO request */
-    rv = UvOsIoSubmit(ctx, 1, &iocbs);
-    if (rv != 0) {
-        /* UNTESTED: in practice this should fail only with ENOMEM */
-        raft_aligned_free(size, buf);
-        UvOsIoDestroy(ctx);
-        /* On ZFS 0.8 this is not properly supported yet. Also, when running on
-         * older kernels a binary compiled on a kernel with RWF_NOWAIT support,
-         * we might get EINVAL. */
-        if (errno == EOPNOTSUPP || errno == EINVAL) {
-            *ok = false;
-            return 0;
-        }
-        UvOsErrMsg(errmsg, "io_submit", rv);
-        return RAFT_IOERR;
-    }
-
-    /* Fetch the response: will block until done. */
-    n_events = UvOsIoGetevents(ctx, 1, 1, &event, NULL);
-    assert(n_events == 1);
-
-    /* Release the write buffer. */
-    raft_aligned_free(size, buf);
-
-    /* Release the KAIO context handle. */
-    rv = UvOsIoDestroy(ctx);
-    if (rv != 0) {
-        UvOsErrMsg(errmsg, "io_destroy", rv);
-        return RAFT_IOERR;
-    }
-
-    if (event.res > 0) {
-        assert(event.res == (int)size);
-        *ok = true;
-    } else {
-        /* UNTESTED: this should basically fail only because of disk errors,
-         * since we allocated the file with posix_fallocate and the block size
-         * is supposed to be correct. */
-        *ok = false;
-    }
-
-    return 0;
-}
-#endif /* RWF_NOWAIT */
-
-#define UV__FS_PROBE_FILE ".probe"
-#define UV__FS_PROBE_FILE_SIZE 4096
-
 int UvFsProbeCapabilities(const char *dir,
                           size_t *direct,
                           bool *async,
                           char *errmsg)
 {
-    int fd; /* File descriptor of the probe file */
-    int rv;
-    char ignored[RAFT_ERRMSG_BUF_SIZE];
-
-    /* Create a temporary probe file. */
-    UvFsRemoveFile(dir, UV__FS_PROBE_FILE, ignored);
-    rv = UvFsAllocateFile(dir, UV__FS_PROBE_FILE, UV__FS_PROBE_FILE_SIZE, &fd,
-                          errmsg);
-    if (rv != 0) {
-        ErrMsgWrapf(errmsg, "create I/O capabilities probe file");
-        goto err;
-    }
-    UvFsRemoveFile(dir, UV__FS_PROBE_FILE, ignored);
-
-    /* Check if we can use direct I/O. */
-    rv = probeDirectIO(fd, direct, errmsg);
-    if (rv != 0) {
-        goto err_after_file_open;
-    }
-
-#if !defined(RWF_NOWAIT)
-    /* We can't have fully async I/O, since io_submit might potentially block.
-     */
+    *direct = 4096;
     *async = false;
-#else
-    /* If direct I/O is not possible, we can't perform fully asynchronous
-     * I/O, because io_submit might potentially block. */
-    if (*direct == 0) {
-        *async = false;
-        goto out;
-    }
-    rv = probeAsyncIO(fd, *direct, async, errmsg);
-    if (rv != 0) {
-        goto err_after_file_open;
-    }
-#endif /* RWF_NOWAIT */
 
-#if defined(RWF_NOWAIT)
-out:
-#endif /* RWF_NOWAIT */
-    close(fd);
     return 0;
-
-err_after_file_open:
-    close(fd);
-err:
-    return rv;
 }

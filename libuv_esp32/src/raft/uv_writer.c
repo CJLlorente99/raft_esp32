@@ -38,27 +38,6 @@ static void uvWriterReqFinish(struct UvWriterReq *req)
     req->cb(req, req->status);
 }
 
-/* Wrapper around the low-level OS syscall, providing a better error message. */
-static int uvWriterIoSetup(unsigned n, aio_context_t *ctx, char *errmsg)
-{
-    int rv;
-    rv = UvOsIoSetup(n, ctx);
-    if (rv != 0) {
-        switch (rv) {
-            case UV_EAGAIN:
-                ErrMsgPrintf(errmsg, "AIO events user limit exceeded");
-                rv = RAFT_TOOMANY;
-                break;
-            default:
-                UvOsErrMsg(errmsg, "io_setup", rv);
-                rv = RAFT_IOERR;
-                break;
-        }
-        return rv;
-    }
-    return 0;
-}
-
 /* Run blocking syscalls involved in a file write request.
  *
  * Perform a KAIO write request and synchronously wait for it to complete. */
@@ -91,26 +70,6 @@ static void uvWriterWorkCb(uv_work_t *work)
         }
     } else {
         ctx = w->ctx;
-    }
-
-    /* Submit the request */
-    rv = UvOsIoSubmit(ctx, 1, &iocbs);
-    if (rv != 0) {
-        /* UNTESTED: since we're not using NOWAIT and the parameters are valid,
-         * this shouldn't fail. */
-        UvOsErrMsg(req->errmsg, "io_submit", rv);
-        rv = RAFT_IOERR;
-        goto out_after_io_setup;
-    }
-
-    /* Wait for the request to complete */
-    n_events = UvOsIoGetevents(ctx, 1, 1, &event, NULL);
-    assert(n_events == 1);
-    assert(rv == 0);
-
-out_after_io_setup:
-    if (w->n_events > 1) {
-        UvOsIoDestroy(ctx);
     }
 
 out:
@@ -162,17 +121,6 @@ static void uvWriterPollCb(uv_poll_t *poller, int status, int events)
 
     /* TODO: this assertion fails in unit tests */
     /* assert(completed == 1); */
-
-    /* Try to fetch the write responses.
-     *
-     * If we got here at least one write should have completed and io_events
-     * should return immediately without blocking. */
-    n_events = UvOsIoGetevents(w->ctx, 1, (long int)w->n_events, w->events, NULL);
-    assert(n_events >= 1);
-
-    for (i = 0; i < (unsigned)n_events; i++) {
-        struct io_event *event = &w->events[i];
-        struct UvWriterReq *req = *((void **)&event->data);
 
 #if defined(RWF_NOWAIT)
         /* If we got EAGAIN, it means it was not possible to perform the write
@@ -232,21 +180,6 @@ int UvWriterInit(struct UvWriter *w,
     w->closing = false;
     w->errmsg = errmsg;
 
-    /* Set direct I/O if available. */
-    if (direct) {
-        rv = UvOsSetDirectIo(w->fd);
-        if (rv != 0) {
-            UvOsErrMsg(errmsg, "fcntl", rv);
-            goto err;
-        }
-    }
-
-    /* Setup the AIO context. */
-    rv = uvWriterIoSetup(w->n_events, &w->ctx, errmsg);
-    if (rv != 0) {
-        goto err;
-    }
-
     /* Initialize the array of re-usable event objects. */
     w->events = HeapCalloc(w->n_events, sizeof *w->events);
     if (w->events == NULL) {
@@ -256,54 +189,12 @@ int UvWriterInit(struct UvWriter *w,
         goto err_after_io_setup;
     }
 
-    /* Create an event file descriptor to get notified when a write has
-     * completed. */
-    rv = UvOsEventfd(0, UV_FS_O_NONBLOCK);
-    if (rv < 0) {
-        /* UNTESTED: should fail only with ENOMEM */
-        UvOsErrMsg(errmsg, "eventfd", rv);
-        rv = RAFT_IOERR;
-        goto err_after_events_alloc;
-    }
-    w->event_fd = rv;
-
-    rv = uv_poll_init(loop, &w->event_poller, w->event_fd);
-    if (rv != 0) {
-        /* UNTESTED: with the current libuv implementation this should never
-         * fail. */
-        UvOsErrMsg(errmsg, "uv_poll_init", rv);
-        rv = RAFT_IOERR;
-        goto err_after_event_fd;
-    }
-    w->event_poller.data = w;
-
-    rv = uv_check_init(loop, &w->check);
-    if (rv != 0) {
-        /* UNTESTED: with the current libuv implementation this should never
-         * fail. */
-        UvOsErrMsg(errmsg, "uv_check_init", rv);
-        rv = RAFT_IOERR;
-        goto err_after_event_fd;
-    }
-    w->check.data = w;
-
-    rv = uv_poll_start(&w->event_poller, UV_READABLE, uvWriterPollCb);
-    if (rv != 0) {
-        /* UNTESTED: with the current libuv implementation this should never
-         * fail. */
-        UvOsErrMsg(errmsg, "uv_poll_start", rv);
-        rv = RAFT_IOERR;
-        goto err_after_event_fd;
-    }
-
     return 0;
 
 err_after_event_fd:
     UvOsClose(w->event_fd);
 err_after_events_alloc:
     HeapFree(w->events);
-err_after_io_setup:
-    UvOsIoDestroy(w->ctx);
 err:
     assert(rv != 0);
     return rv;
@@ -315,7 +206,6 @@ static void uvWriterCleanUpAndFireCloseCb(struct UvWriter *w)
 
     UvOsClose(w->fd);
     HeapFree(w->events);
-    UvOsIoDestroy(w->ctx);
 
     if (w->close_cb != NULL) {
         w->close_cb(w);
@@ -476,7 +366,6 @@ int UvWriterSubmit(struct UvWriter *w,
     /* Try to submit the write request asynchronously */
     if (w->async) {
         QUEUE_PUSH(&w->poll_queue, &req->queue);
-        rv = UvOsIoSubmit(w->ctx, 1, &iocbs);
 
         /* If no error occurred, we're done, the write request was
          * submitted. */

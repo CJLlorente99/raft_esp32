@@ -101,16 +101,21 @@ main_signal(void* ignore){
 // CHECK TEST
 
 #define LED_CHECK_TEST_PORT 14
-bool led_state = 0;
 
 // #define LED_DEBUG_PORT 5
 
 void
 check_callback (uv_check_t* handle){
+    static bool led_state = 0;
     gpio_set_level(LED_CHECK_TEST_PORT,(int)led_state);
     led_state = !led_state;
 }
 
+void
+check_callback2 (uv_check_t* handle){
+    static int count = 0;
+    ESP_LOGI("check_callback2","%d",count++);
+}
 
 void
 main_check(void* ignore){
@@ -145,8 +150,22 @@ main_check(void* ignore){
 
     ESP_LOGI("CHECK_INIT", "Primer signal inicializado en main_check");
 
-    // Aqui hay un error
     rv = uv_check_start(check_handle, check_callback);
+    if(rv != 0){
+        ESP_LOGE("CHECK_START","Error durante primer uv_check_start en main_check");
+    }
+
+    uv_check_t* check_handle2 = malloc(sizeof(uv_check_t));
+
+    rv = uv_check_init(loop, check_handle2);
+    if(rv != 0){
+        ESP_LOGE("CHECK_INIT","Error durante la primera inicializacion en main_check");
+    }
+
+    ESP_LOGI("CHECK_INIT", "Primer signal inicializado en main_check");
+
+    // Aqui hay un error
+    rv = uv_check_start(check_handle2, check_callback2);
     if(rv != 0){
         ESP_LOGE("CHECK_START","Error durante primer uv_check_start en main_check");
     }
@@ -271,7 +290,7 @@ read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf){
         free(buf->base);
         free(buf);
         uv_read_stop(stream);
-        uv_read_start(stream, stream->alloc_cb, stream->read_cb);
+        uv_read_start(stream, alloc_cb, read_cb);
         return;
     } else if(nread == 0){ // more info is going to be read, well be called afterwards
         return;
@@ -283,17 +302,32 @@ read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf){
 void
 connect_cb(uv_connect_t* req, int status){
     int rv;
-    ESP_LOGI("CONNECT_CB", "Entered connect_cb with status = %d", status);
+    ESP_LOGI("connect_cb", "Entered connect_cb with status = %d", status);
 
     rv = uv_read_start((uv_stream_t*)tcp_client, alloc_cb, read_cb);
     if(rv != 0){
-        ESP_LOGE("TCP_TIMER_READ_CB","Error while trying to read_start");
+        ESP_LOGE("connect_cb","Error while trying to read_start");
     }
 }
 
 void
 write_cb(uv_write_t* req, int status){
+    int rv;
+
     ESP_LOGI("WRITE_CB", "Write callback has been called with status = %d", status);
+
+    free(req->bufs);
+    uv_buf_t* buf = malloc(sizeof(uv_buf_t));
+    memset(buf, 0, sizeof(uv_buf_t));
+    buf->base = malloc(4*1024);
+    strcpy(buf->base, "Saludos");
+    buf->len = 4*1024;
+
+    ESP_LOGI("write_cb", "uv_write");
+    rv = uv_write(req, req->stream, buf, 1, write_cb);
+    if(rv != 0){
+        ESP_LOGE("write_cb","Error while trying to write");
+    }
 }
 
 void
@@ -303,6 +337,7 @@ connection_cb(uv_stream_t* server, int status){
 
     uv_stream_t* client = malloc(sizeof(uv_stream_t));
     memset(client, 0, sizeof(uv_stream_t));
+    ESP_LOGI("CONNECTION_CB", "uv_accept");
     rv = uv_accept(server, client);
     if(rv != 0){
         ESP_LOGE("CONNECTION_CB", "Error while trying to accept");
@@ -315,7 +350,8 @@ connection_cb(uv_stream_t* server, int status){
     strcpy(buf->base, "Saludos");
     buf->len = 4*1024;
 
-    rv = uv_write(req, (uv_stream_t*)client, buf, 1, write_cb);
+    ESP_LOGI("CONNECTION_CB", "uv_write");
+    rv = uv_write(req, client, buf, 1, write_cb);
     if(rv != 0){
         ESP_LOGE("TCP_TIMER_CB","Error while trying to write");
     }
@@ -336,33 +372,33 @@ main_tcp(void* ignore){
     ESP_LOGI("LOOP_INIT", "Loop inicializado en main_tcp");
 
     // Init server side
-    tcp_server = malloc(sizeof(uv_tcp_t));
+    // tcp_server = malloc(sizeof(uv_tcp_t));
 
-    rv = uv_tcp_init(loop, tcp_server);
-    if(rv != 0){
-        ESP_LOGE("TCP_INIT", "Error in first uv_tcp_init in main_tcp");
-    }
+    // rv = uv_tcp_init(loop, tcp_server);
+    // if(rv != 0){
+    //     ESP_LOGE("TCP_INIT", "Error in first uv_tcp_init in main_tcp");
+    // }
 
-    ESP_LOGI("TCP_INIT", "First uv_tcp_init success");
+    // ESP_LOGI("TCP_INIT", "First uv_tcp_init success");
 
-    struct sockaddr_in local_addr;
-    local_addr.sin_family = AF_INET;
-    local_addr.sin_port = htons(50000);
-    local_addr.sin_addr.s_addr = inet_addr(LOCALIP);
+    // struct sockaddr_in local_addr;
+    // local_addr.sin_family = AF_INET;
+    // local_addr.sin_port = htons(50000);
+    // local_addr.sin_addr.s_addr = inet_addr(LOCALIP);
 
-    rv = uv_tcp_bind(tcp_server, (struct sockaddr*)&local_addr, 0);
-    if(rv != 0){
-        ESP_LOGE("TCP_BIND", "Error in uv_tcp_bind in main_tcp");
-    }
+    // rv = uv_tcp_bind(tcp_server, (struct sockaddr*)&local_addr, 0);
+    // if(rv != 0){
+    //     ESP_LOGE("TCP_BIND", "Error in uv_tcp_bind in main_tcp");
+    // }
 
-    ESP_LOGI("TCP_BIND", "uv_tcp_bind success");
+    // ESP_LOGI("TCP_BIND", "uv_tcp_bind success");
 
-    rv = uv_listen((uv_stream_t*)tcp_server, 1, connection_cb);
-    if(rv != 0){
-        ESP_LOGE("UV_LISTEN", "Error in uv_listen in main_tcp");
-    }
+    // rv = uv_listen((uv_stream_t*)tcp_server, 1, connection_cb);
+    // if(rv != 0){
+    //     ESP_LOGE("UV_LISTEN", "Error in uv_listen in main_tcp");
+    // }
 
-    ESP_LOGI("UV_LISTEN", "uv_listen success");
+    // ESP_LOGI("UV_LISTEN", "uv_listen success");
 
     // Init client side
     tcp_client = malloc(sizeof(uv_tcp_t));
@@ -540,42 +576,40 @@ info(uv_signal_t* handle, int signum){
     int rv;
     int n;
     FIL file;
-    FRESULT fr;
-    uv_fs_t* req = malloc(sizeof(uv_fs_t));
-    memset(req, 0, sizeof(uv_fs_t));
-    uv_dirent_t* ent = malloc(sizeof(uv_dirent_t));
+    uv_fs_t req;
+    uv_dirent_t ent;
     const char* path1 = "dir1";
 
     ESP_LOGI("INFO", "uv_fs_scandir");
-    n = uv_fs_scandir(NULL, req, path1, 0, NULL);
+    n = uv_fs_scandir(NULL, &req, path1, 0, NULL);
     ESP_LOGI("INFO", "Numero de archivos %d", n);
 
     ESP_LOGI("INFO", "print results");
-    char* buf;
-    UINT br; 
+    uv_buf_t buf;
+
     for(int i = 0; i < n; i++){
         ESP_LOGI("INFO", "uv_fs_scandir_next");
-        rv = uv_fs_scandir_next(req, ent);
+        rv = uv_fs_scandir_next(&req, &ent);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_scandir_next");
         }
-        ESP_LOGI("INFO", "File name is %s", ent->name);
-        file = uv_fs_open(NULL, req, ent->name, UV_FS_O_RDONLY, 0, NULL);
-        rv = uv_fs_stat(NULL, req, ent->name, NULL);
-        buf = malloc(req->statbuf.st_size);
-        fr = f_read(&file, buf, req->statbuf.st_size, &br);
-        if(fr != FR_OK){
-            ESP_LOGE("INFO", "f_read");
-        }
+        ESP_LOGI("INFO", "File name is %s", ent.name);
+        ESP_LOGI("INFO", "uv_fs_open");
+        file = uv_fs_open(NULL, &req, ent.name, UV_FS_O_RDONLY, 0, NULL);
+        ESP_LOGI("INFO", "uv_fs_stat");
+        rv = uv_fs_stat(NULL, &req, ent.name, NULL);
+        ESP_LOGI("INFO", "uv_fs_read");
+        buf.len = req.statbuf.st_size;
+        buf.base = malloc(buf.len);
+        rv = uv_fs_read(NULL, &req, file, &buf, 1, 0, NULL);
 
-        ESP_LOGI("INFO", "Tamaño %u, leidos %u", req->statbuf.st_size, br);
-        for(int i = 0; i < req->statbuf.st_size; i++){
-            ESP_LOGI("INFO", "%c", buf[i]);
+        for(int i = 0; i < req.statbuf.st_size; i++){
+            ESP_LOGI("INFO", "%c", buf.base[i]);
         }
         // ESP_LOGI("INFO", "%s %d %d", buf, strlen(buf), br);
-        free(buf);
 
-        rv = uv_fs_close(NULL, req, file, NULL);
+        ESP_LOGI("INFO", "uv_fs_close");
+        rv = uv_fs_close(NULL, &req, file, NULL);
         if(rv != 0){
             ESP_LOGE("INFO", "uv_fs_close");
         }
