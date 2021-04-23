@@ -33,7 +33,5 @@ typedef struct TreeFSM
 
 fsm_t* fsm_new_treeFSM ();
 void new_random_color();
-int updateTreeFSM(fsm_t* fsm, TreeFSM* newData);
-int fillSnapshot(fsm_t* fsm, TreeFSM* newData);
 
 #endif /* _TREE_FSM_ */

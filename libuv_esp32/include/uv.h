@@ -55,12 +55,13 @@
 #define UV_FS_O_TRUNC   FA_CREATE_ALWAYS
 #define UV_FS_O_WRONLY  FA_WRITE
 
-// poll events
-
-#define UV_READABLE     POLLIN
-#define UV_WRITABLE     POLLOUT  
-
 // Enums
+
+typedef enum{
+    UV_ENOENT = FR_NO_FILE,
+    UV_EACCES = FR_DENIED,
+    UV_ENOTDIR = FR_NO_PATH
+} uv_errno_t;
 
 typedef enum{
     CONNECT,
@@ -200,6 +201,7 @@ struct uv_handle_s {
     uv_handle_type type;
     /* private */
     handle_vtbl_t* vtbl;
+    int active;
 };
 
 // virtual table for every handle
@@ -219,6 +221,7 @@ struct uv_dirent_s {
 
 struct uv_stat_s {
     uint32_t st_size;
+    int st_mode;
 };
 
 /* Requests */
@@ -459,6 +462,8 @@ int uv_check_stop(uv_check_t* handle);
 int uv_loop_init (uv_loop_t* loop);
 int uv_loop_close (uv_loop_t* loop);
 int uv_run (uv_loop_t* loop, uv_run_mode mode);
+uint32_t uv_now(const uv_loop_t* loop);
+int uv_is_active(uv_handle_t* handle);
 
 // TCP function prototypes
 int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp);
@@ -491,5 +496,9 @@ int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb, uv_after_
 // Core function prototypes
 int uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle);
 int uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle);
+
+// Miscelaneous function prototypes
+
+int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
 
 #endif /* UV_H */
