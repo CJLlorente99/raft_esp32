@@ -231,6 +231,11 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
     }  
 
     fname = fno.fname;
+
+    if(fname[0] == NULL){
+        return EOF;
+    }
+
     strcpy(ent->name, req->path);
     strcat(ent->name, "/");
     strcat(ent->name, fname);
@@ -268,6 +273,16 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     }
 
     req->statbuf.st_size = f_size(&fp);
+
+    FILINFO fno;
+
+    rv = f_stat(path, &fno);
+    if(rv != FR_OK){
+        ESP_LOGE("UV_FS_STAT", "Error during f_stat in uv_fs_stat code %d",rv);
+        return 1;
+    }
+
+    req->statbuf.st_size = fno.fattrib;
 
     rv = f_close(&fp);
     if(rv != FR_OK){

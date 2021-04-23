@@ -5,10 +5,8 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/eventfd.h>
 #include <sys/types.h>
 #include <sys/uio.h>
-#include <sys/vfs.h>
 #include <unistd.h>
 #include <uv.h>
 
@@ -22,11 +20,8 @@
 int UvOsOpen(const char *path, int flags, int mode, uv_file *fd)
 {
     struct uv_fs_s req;
-    int rv;
+    FIL rv;
     rv = uv_fs_open(NULL, &req, path, flags, mode, NULL);
-    if (rv < 0) {
-        return rv;
-    }
     *fd = rv;
     return 0;
 }
@@ -41,12 +36,11 @@ int UvOsFallocate(uv_file fd, off_t offset, off_t len)
 {
     // TODO (maybe use f_expand)
     FRESULT fr;
-    fr = f_expand(fd, len, 1);
+    fr = f_expand(&fd, len, 1);
     if (fr != 0) {
         ESP_LOGE("UvOsFallocate", "%d", fr);
-        return 1;
     }
-    return 0;
+    return fr;
 }
 
 int UvOsTruncate(uv_file fd, off_t offset)
@@ -64,7 +58,7 @@ int UvOsFsync(uv_file fd)
 int UvOsFdatasync(uv_file fd)
 {
     struct uv_fs_s req;
-    return uv_fs_fdatasync(NULL, &req, fd, NULL);
+    return uv_fs_fsync(NULL, &req, fd, NULL);
 }
 
 int UvOsStat(const char *path, uv_stat_t *sb)
@@ -107,57 +101,4 @@ void UvOsJoin(const char *dir, const char *filename, char *path)
     strcpy(path, dir);
     strcat(path, "/");
     strcat(path, filename);
-}
-
-int UvOsIoDestroy(aio_context_t ctx)
-{
-    int rv;
-    rv = io_destroy(ctx);
-    if (rv == -1) {
-        return -errno;
-    }
-    return 0;
-}
-
-int UvOsIoSubmit(aio_context_t ctx, long nr, struct iocb **iocbpp)
-{
-    int rv;
-    rv = io_submit(ctx, nr, iocbpp);
-    if (rv == -1) {
-        return -errno;
-    }
-    assert(rv == nr); /* TODO: can something else be returned? */
-    return 0;
-}
-
-int UvOsIoGetevents(aio_context_t ctx,
-                    long min_nr,
-                    long max_nr,
-                    struct io_event *events,
-                    struct timespec *timeout)
-{
-    int rv;
-    do {
-        rv = io_getevents(ctx, min_nr, max_nr, events, timeout);
-    } while (rv == -1 && errno == EINTR);
-
-    if (rv == -1) {
-        return -errno;
-    }
-    assert(rv >= min_nr);
-    assert(rv <= max_nr);
-    return rv;
-}
-
-int UvOsEventfd(unsigned int initval, int flags)
-{
-    int rv;
-    /* At the moment only UV_FS_O_NONBLOCK is supported */
-    assert(flags == UV_FS_O_NONBLOCK);
-    flags = EFD_NONBLOCK | EFD_CLOEXEC;
-    rv = eventfd(initval, flags);
-    if (rv == -1) {
-        return -errno;
-    }
-    return rv;
 }

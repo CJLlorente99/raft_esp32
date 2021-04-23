@@ -103,7 +103,6 @@ static void uvTcpConnectUvWriteCb(struct uv_write_s *write, int status)
     }
 
     if (status != 0) {
-        assert(status != UV_ECANCELED); /* t->closing would have been true */
         connect->status = RAFT_NOCONNECTION;
         uvTcpConnectAbort(connect);
         return;
@@ -125,10 +124,9 @@ static void uvTcpConnectUvConnectCb(struct uv_connect_s *req, int status)
     }
 
     if (status != 0) {
-        assert(status != UV_ECANCELED); /* t->closing would have been true */
         connect->status = RAFT_NOCONNECTION;
-        ErrMsgPrintf(t->transport->errmsg, "uv_tcp_connect(): %s",
-                     uv_strerror(status));
+        ErrMsgPrintf(t->transport->errmsg, "uv_tcp_connect(): %d",
+                     status);
         goto err;
     }
 
@@ -182,8 +180,8 @@ static int uvTcpConnectStart(struct uvTcpConnect *r, const char *address)
     if (rv != 0) {
         /* UNTESTED: since parsing succeed, this should fail only because of
          * lack of system resources */
-        ErrMsgPrintf(t->transport->errmsg, "uv_tcp_connect(): %s",
-                     uv_strerror(rv));
+        ErrMsgPrintf(t->transport->errmsg, "uv_tcp_connect(): %d",
+                     rv);
         rv = RAFT_NOCONNECTION;
         goto err_after_tcp_init;
     }

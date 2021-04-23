@@ -106,7 +106,7 @@ void UvOsJoin(const char *dir, const char *filename, char *path);
 /* Format an error message caused by a failed system call or stdlib function. */
 #define UvOsErrMsg(ERRMSG, SYSCALL, ERRNUM)              \
     {                                                    \
-        ErrMsgPrintf(ERRMSG, "%s", uv_strerror(ERRNUM)); \
+        ErrMsgPrintf(ERRMSG, "%d", ERRNUM); \
         ErrMsgWrapf(ERRMSG, SYSCALL);                    \
     }
 

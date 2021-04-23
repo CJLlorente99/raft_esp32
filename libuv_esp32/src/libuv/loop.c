@@ -143,11 +143,16 @@ handle_run(uv_handle_t* handle){
 void
 uv_close(uv_handle_t* handle, uv_close_cb close_cb){
     int rv = 0;
+
+    close_cb(handle);
+
     rv = uv_remove_handle(handle->loop->loopFSM->user_data, handle);
     if(rv != 0){
         ESP_LOGE("UV_CLOSE", "Error when calling uv_remove_handle in uv_close");
     }
+}
 
-    /* Cuidado con esto. handle estará deallocated, va a dar error de memoria */
-    close_cb(handle);
+int
+uv_is_active(uv_handle_t* handle){
+    return handle->active;
 }

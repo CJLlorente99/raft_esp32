@@ -136,7 +136,7 @@ static void uvTruncateBarrierCb(struct UvBarrier *barrier)
     rv = uv_queue_work(uv->loop, &uv->truncate_work, uvTruncateWorkCb,
                        uvTruncateAfterWorkCb);
     if (rv != 0) {
-        tracef("truncate index %lld: %s", truncate->index, uv_strerror(rv));
+        tracef("truncate index %lld: %s", truncate->index, rv);
         uv->truncate_work.data = NULL;
         uv->errored = true;
     }

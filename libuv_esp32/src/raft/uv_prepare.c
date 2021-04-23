@@ -102,7 +102,6 @@ static void uvPrepareConsume(struct uv *uv, uv_file *fd, uvCounter *counter)
     /* Pop a segment from the pool. */
     head = QUEUE_HEAD(&uv->prepare_pool);
     segment = QUEUE_DATA(head, struct uvIdleSegment, queue);
-    assert(segment->fd >= 0);
     QUEUE_REMOVE(&segment->queue);
     *fd = segment->fd;
     *counter = segment->counter;
@@ -161,7 +160,7 @@ static int uvPrepareStart(struct uv *uv)
     segment->uv = uv;
     segment->counter = uv->prepare_next_counter;
     segment->work.data = segment;
-    segment->fd = -1;
+    // segment->fd = -1;
     segment->size = uv->block_size * uvSegmentBlocks(uv);
     sprintf(segment->filename, UV__OPEN_TEMPLATE, segment->counter);
 
@@ -171,7 +170,7 @@ static int uvPrepareStart(struct uv *uv)
     if (rv != 0) {
         /* UNTESTED: with the current libuv implementation this can't fail. */
         tracef("can't create segment %s: %s", segment->filename,
-               uv_strerror(rv));
+               rv);
         rv = RAFT_IOERR;
         goto err_after_segment_alloc;
     }
@@ -229,8 +228,6 @@ static void uvPrepareAfterWorkCb(uv_work_t *work, int status)
         return;
     }
 
-    assert(segment->fd >= 0);
-
     tracef("completed creation of %s", segment->filename);
     QUEUE_PUSH(&uv->prepare_pool, &segment->queue);
 
@@ -268,7 +265,6 @@ static void uvPrepareDiscard(struct uv *uv, uv_file fd, uvCounter counter)
     char errmsg[RAFT_ERRMSG_BUF_SIZE];
     char filename[UV__FILENAME_LEN];
     assert(counter > 0);
-    assert(fd >= 0);
     sprintf(filename, UV__OPEN_TEMPLATE, counter);
     UvOsClose(fd);
     UvFsRemoveFile(uv->dir, filename, errmsg);
@@ -289,7 +285,6 @@ int UvPrepare(struct uv *uv,
         goto maybe_start;
     }
 
-    *fd = -1;
     *counter = 0;
     req->cb = cb;
     QUEUE_PUSH(&uv->prepare_reqs, &req->queue);
@@ -308,7 +303,7 @@ maybe_start:
     return 0;
 
 err:
-    if (*fd != -1) {
+    if (true) {
         uvPrepareDiscard(uv, *fd, *counter);
     } else {
         QUEUE_REMOVE(&req->queue);

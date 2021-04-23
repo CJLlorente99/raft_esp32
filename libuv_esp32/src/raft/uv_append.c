@@ -4,7 +4,6 @@
 #include "queue.h"
 #include "uv.h"
 #include "uv_encoding.h"
-#include "uv_writer.h"
 
 /* The happy path for an append request is:
  *
@@ -44,8 +43,6 @@ struct uvAliveSegment
 {
     struct uv *uv;                  /* Our writer */
     struct uvPrepare prepare;       /* Prepare segment file request */
-    struct UvWriter writer;         /* Writer to perform async I/O */
-    struct UvWriterReq write;       /* Write request */
     unsigned long long counter;     /* Open segment counter */
     raft_index first_index;         /* Index of the first entry written */
     raft_index pending_last_index;  /* Index of the last entry written */
@@ -69,15 +66,6 @@ struct uvAppend
     queue queue;
 };
 
-static void uvAliveSegmentWriterCloseCb(struct UvWriter *writer)
-{
-    struct uvAliveSegment *segment = writer->data;
-    struct uv *uv = segment->uv;
-    uvSegmentBufferClose(&segment->pending);
-    HeapFree(segment);
-    uvMaybeFireCloseCb(uv);
-}
-
 /* Submit a request to close the current open segment. */
 static void uvAliveSegmentFinalize(struct uvAliveSegment *s)
 {
@@ -92,7 +80,6 @@ static void uvAliveSegmentFinalize(struct uvAliveSegment *s)
     }
 
     QUEUE_REMOVE(&s->queue);
-    UvWriterClose(&s->writer, uvAliveSegmentWriterCloseCb);
 }
 
 /* Flush the append requests in the given queue, firing their callbacks with the
@@ -123,13 +110,6 @@ static void uvAppendFinishRequestsInQueue(struct uv *uv, queue *q, int status)
         HeapFree(append);
         req->cb(req, status);
     }
-}
-
-/* Flush the append requests in the writing queue, firing their callbacks with
- * the given status. */
-static void uvAppendFinishWritingRequests(struct uv *uv, int status)
-{
-    uvAppendFinishRequestsInQueue(uv, &uv->append_writing_reqs, status);
 }
 
 /* Flush the append requests in the pending queue, firing their callbacks with
@@ -180,113 +160,13 @@ static int uvAliveSegmentEncodeEntriesToWriteBuf(struct uvAliveSegment *segment,
 }
 
 static int uvAppendMaybeStart(struct uv *uv);
-static void uvAliveSegmentWriteCb(struct UvWriterReq *write, const int status)
-{
-    struct uvAliveSegment *s = write->data;
-    struct uv *uv = s->uv;
-    unsigned n_blocks;
-    int rv;
-
-    assert(uv->state != UV__CLOSED);
-
-    assert(s->buf.len % uv->block_size == 0);
-    assert(s->buf.len >= uv->block_size);
-
-    /* Check if the write was successful. */
-    if (status != 0) {
-        Tracef(uv->tracer, "write: %s", uv->io->errmsg);
-        uv->errored = true;
-        goto out;
-    }
-
-    s->written = s->next_block * uv->block_size + s->pending.n;
-    s->last_index = s->pending_last_index;
-
-    /* Update our write markers.
-     *
-     * We have four cases:
-     *
-     * - The data fit completely in the leftover space of the first block that
-     *   we wrote and there is more space left. In this case we just keep the
-     *   scheduled marker unchanged.
-     *
-     * - The data fit completely in the leftover space of the first block that
-     *   we wrote and there is no space left. In this case we advance the
-     *   current block counter, reset the first write block and set the
-     *   scheduled marker to 0.
-     *
-     * - The data did not fit completely in the leftover space of the first
-     *   block that we wrote, so we wrote more than one block. The last block
-     *   that we wrote was not filled completely and has leftover space. In this
-     *   case we advance the current block counter and copy the memory used for
-     *   the last block to the head of the write arena list, updating the
-     *   scheduled marker accordingly.
-     *
-     * - The data did not fit completely in the leftover space of the first
-     *   block that we wrote, so we wrote more than one block. The last block
-     *   that we wrote was filled exactly and has no leftover space. In this
-     *   case we advance the current block counter, reset the first buffer and
-     *   set the scheduled marker to 0.
-     */
-    n_blocks =
-        (unsigned)(s->buf.len / uv->block_size); /* Number of blocks written. */
-    if (s->pending.n < uv->block_size) {
-        /* Nothing to do */
-        assert(n_blocks == 1);
-    } else if (s->pending.n == uv->block_size) {
-        assert(n_blocks == 1);
-        s->next_block++;
-        uvSegmentBufferReset(&s->pending, 0);
-    } else {
-        assert(s->pending.n > uv->block_size);
-        assert(s->buf.len > uv->block_size);
-
-        if (s->pending.n % uv->block_size > 0) {
-            s->next_block += n_blocks - 1;
-            uvSegmentBufferReset(&s->pending, n_blocks - 1);
-        } else {
-            s->next_block += n_blocks;
-            uvSegmentBufferReset(&s->pending, 0);
-        }
-    }
-
-out:
-    /* Fire the callbacks of all requests that were fulfilled with this
-     * write. */
-    uvAppendFinishWritingRequests(uv, status);
-
-    /* During the closing sequence we should have already canceled all pending
-     * request. */
-    if (uv->closing) {
-        assert(QUEUE_IS_EMPTY(&uv->append_pending_reqs));
-        assert(s->finalize);
-        uvAliveSegmentFinalize(s);
-        return;
-    }
-
-    /* Possibly process waiting requests. */
-    if (!QUEUE_IS_EMPTY(&uv->append_pending_reqs)) {
-        rv = uvAppendMaybeStart(uv);
-        if (rv != 0) {
-            uv->errored = true;
-        }
-    }
-}
-
 /* Submit a file write request to append the entries encoded in the write buffer
  * of the given segment. */
 static int uvAliveSegmentWrite(struct uvAliveSegment *s)
 {
-    int rv;
     assert(s->counter != 0);
     assert(s->pending.n > 0);
     uvSegmentBufferFinalize(&s->pending, &s->buf);
-    rv = UvWriterSubmit(&s->writer, &s->write, &s->buf, 1,
-                        s->next_block * s->uv->block_size,
-                        uvAliveSegmentWriteCb);
-    if (rv != 0) {
-        return rv;
-    }
     return 0;
 }
 
@@ -397,13 +277,6 @@ static int uvAliveSegmentReady(struct uv *uv,
                                uvCounter counter,
                                struct uvAliveSegment *segment)
 {
-    int rv;
-    rv = UvWriterInit(&segment->writer, uv->loop, fd, uv->direct_io,
-                      uv->async_io, 1, uv->io->errmsg);
-    if (rv != 0) {
-        ErrMsgWrapf(uv->io->errmsg, "setup writer for open-%llu", counter);
-        return rv;
-    }
     segment->counter = counter;
     return 0;
 }
@@ -461,8 +334,6 @@ static void uvAliveSegmentInit(struct uvAliveSegment *s, struct uv *uv)
 {
     s->uv = uv;
     s->prepare.data = s;
-    s->writer.data = s;
-    s->write.data = s;
     s->counter = 0;
     s->first_index = uv->append_next_index;
     s->pending_last_index = s->first_index - 1;
@@ -502,12 +373,11 @@ static int uvAppendPushAliveSegment(struct uv *uv)
 
     /* If we've been returned a ready prepared segment right away, start writing
      * to it immediately. */
-    if (fd) {
-        rv = uvAliveSegmentReady(uv, fd, counter, segment);
-        if (rv != 0) {
-            goto err_after_prepare;
-        }
+    rv = uvAliveSegmentReady(uv, fd, counter, segment);
+    if (rv != 0) {
+        goto err_after_prepare;
     }
+
     return 0;
 
 err_after_prepare:

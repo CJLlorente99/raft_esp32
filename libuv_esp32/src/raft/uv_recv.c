@@ -315,8 +315,8 @@ static void uvServerReadCb(uv_stream_t *stream,
         /* Empty read */
         return;
     }
-    if (nread != UV_EOF) {
-        Tracef(s->uv->tracer, "receive data: %s", uv_strerror((int)nread));
+    if (nread != EOF) {
+        Tracef(s->uv->tracer, "receive data: %d", (int)nread);
     }
 
 abort:
@@ -329,7 +329,7 @@ static int uvServerStart(struct uvServer *s)
     int rv;
     rv = uv_read_start(s->stream, uvServerAllocCb, uvServerReadCb);
     if (rv != 0) {
-        Tracef(s->uv->tracer, "start reading: %s", uv_strerror(rv));
+        Tracef(s->uv->tracer, "start reading: %d", rv);
         return RAFT_IOERR;
     }
     return 0;

@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include <sys/uio.h>
+// include <sys/uio.h>
 
 #include "array.h"
 #include "assert.h"
@@ -231,7 +231,7 @@ err_after_buf_malloc:
     HeapFree(buf.base);
 
 err_after_open:
-    close(fd);
+    uv_fs_close(NULL, NULL, fd, NULL);
 
 err:
     assert(rv != 0);
@@ -485,7 +485,7 @@ static void uvSnapshotPutStart(struct uvSnapshotPut *put)
                        uvSnapshotPutAfterWorkCb);
     if (rv != 0) {
         tracef("store snapshot %lld: %s", put->snapshot->index,
-               uv_strerror(rv));
+               rv);
         uv->errored = true;
     }
 }
@@ -660,7 +660,7 @@ int UvSnapshotGet(struct raft_io *io,
                        uvSnapshotGetAfterWorkCb);
     if (rv != 0) {
         QUEUE_REMOVE(&get->queue);
-        tracef("get last snapshot: %s", uv_strerror(rv));
+        tracef("get last snapshot: %s", rv);
         rv = RAFT_IOERR;
         goto err_after_snapshot_alloc;
     }

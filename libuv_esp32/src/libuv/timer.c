@@ -24,6 +24,7 @@ static handle_vtbl_t timer_vtbl = {
 int
 uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
 
+    handle->self.active = 0;
     handle->self.loop = loop;
     handle->self.type = UV_TIMER;
     handle->self.vtbl = &timer_vtbl;
@@ -48,6 +49,7 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
         clamped_timeout = (uint32_t) -1;
     }
 
+    handle->self.active = 1;
     handle->timer_cb = cb;
     handle->timeout = clamped_timeout;
     handle->repeat = (uint32_t)repeat;

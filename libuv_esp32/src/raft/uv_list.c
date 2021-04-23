@@ -46,7 +46,7 @@ int UvList(struct uv *uv,
 
     n = uv_fs_scandir(NULL, &req, uv->dir, 0, NULL);
     if (n < 0) {
-        ErrMsgPrintf(errmsg, "scan data directory: %s", uv_strerror(n));
+        ErrMsgPrintf(errmsg, "scan data directory: %d", n);
         return RAFT_IOERR;
     }
 
@@ -102,7 +102,7 @@ int UvList(struct uv *uv,
     }
 
     rv2 = uv_fs_scandir_next(&req, &entry);
-    assert(rv2 == UV_EOF);
+    assert(rv2 == EOF);
 
     if (rv != 0 && *segments != NULL) {
         raft_free(*segments);

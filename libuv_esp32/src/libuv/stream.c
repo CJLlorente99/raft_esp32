@@ -296,9 +296,9 @@ run_write_handle(uv_handle_t* handle){
 
     if(select(write_handle->stream->socket + 1, NULL, &writeset, NULL, &tv)){
         rv = write(write_handle->stream->socket, write_handle->bufs->base, write_handle->nbufs * write_handle->bufs->len);
-        write_handle->status = rv;
         if(rv < 0){
             ESP_LOGE("run_write_handle", "Error during write in run_tcp: errno %d", errno);
+            write_handle->status = -1;
         }
 
         if(rv != write_handle->nbufs * write_handle->bufs->len){
@@ -308,6 +308,8 @@ run_write_handle(uv_handle_t* handle){
             write_handle->nbufs = 1;
             return;
         }
+
+        write_handle->status = 0;
 
         write_handle->cb(write_handle, write_handle->status);
 

@@ -195,8 +195,6 @@ static void uvSendWriteCb(struct uv_write_s *write, const int status)
             if (c->stream != NULL) {
                 uvClientDisconnect(c);
             }
-        } else if (status == UV_ECANCELED) {
-            cb_status = RAFT_CANCELED;
         }
     }
 

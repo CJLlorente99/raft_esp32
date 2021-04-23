@@ -31,17 +31,17 @@ int UvFsCheckDir(const char *dir, char *errmsg)
                              dir);
                 return RAFT_INVALID;
         }
-        ErrMsgPrintf((char *)errmsg, "can't stat '%s': %s", dir,
-                     uv_strerror(rv));
+        ErrMsgPrintf((char *)errmsg, "can't stat '%s': %d", dir,
+                     rv);
         return RAFT_IOERR;
     }
 
-    if (!(req.statbuf.st_mode & S_IFDIR)) {
+    if (!(req.statbuf.st_mode & AM_DIR)) {
         ErrMsgPrintf((char *)errmsg, "path '%s' is not a directory", dir);
         return RAFT_INVALID;
     }
 
-    if (!(req.statbuf.st_mode & S_IWRITE)) {
+    if (false) {
         ErrMsgPrintf((char *)errmsg, "directory '%s' is not writable", dir);
         return RAFT_INVALID;
     }
@@ -177,7 +177,6 @@ int UvFsAllocateFile(const char *dir,
     UvOsJoin(dir, filename, path);
 
     /* TODO: use RWF_DSYNC instead, if available. */
-    flags |= O_DSYNC;
 
     rv = uvFsOpenFile(dir, filename, flags, S_IRUSR | S_IWUSR, fd, errmsg);
     if (rv != 0) {
@@ -188,13 +187,13 @@ int UvFsAllocateFile(const char *dir,
     rv = UvOsFallocate(*fd, 0, (off_t)size);
     if (rv != 0) {
         switch (rv) {
-            case UV_ENOSPC:
+            case FR_DENIED:
                 ErrMsgPrintf(errmsg, "not enough space to allocate %zu bytes",
                              size);
                 rv = RAFT_NOSPACE;
                 break;
             default:
-                UvOsErrMsg(errmsg, "posix_allocate", rv);
+                UvOsErrMsg(errmsg, "f_expand", rv);
                 rv = RAFT_IOERR;
                 break;
         }
@@ -340,14 +339,14 @@ err:
 
 bool UvFsIsAtEof(uv_file fd)
 {
-    return f_eof(fd) != 0;           /* Compare current offset and size */
+    return f_eof(&fd) != 0;           /* Compare current offset and size */
 }
 
 int UvFsReadInto(uv_file fd, struct raft_buffer *buf, char *errmsg)
 {
     int rv;
     uv_fs_t req;
-    rv = uv_fs_read(NULL, &req, fd, buf, 1, 0, NULL);
+    rv = uv_fs_read(NULL, &req, fd, (uv_buf_t*)buf, 1, 0, NULL);
     if (rv == -1) {
         UvOsErrMsg(errmsg, "read", -errno);
         return RAFT_IOERR;
