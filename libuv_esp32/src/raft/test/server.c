@@ -179,6 +179,9 @@ static int ServerInit(struct Server *s,
         goto err_after_uv_tcp_init;
     }
 
+    /* Change size of segment files (default is 8 MB, changed to 0.5 MB) */
+    raft_uv_set_segment_size(&s->io, 0.5*1024*1024);
+
     /* Initialize the finite state machine. */
     rv = FsmInit(&s->fsm);
     if (rv != 0) {

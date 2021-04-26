@@ -74,22 +74,7 @@ FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int m
         }
     }
 
-    // Intentar crear si es que no está creada ya
-    rv = f_open(&fp, path, FA_CREATE_NEW);
-    if((rv != FR_EXIST) && (rv != FR_OK)){
-        ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open during open create. Code = %d", rv);
-        return fp;
-    }
-    
-    if(rv == FR_OK){
-        rv = f_close(&fp);
-        if(rv){
-            ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open during close . Code = %d", rv);
-            return fp;
-        }
-    }
-
-    rv = f_open(&fp, path, flags);
+    rv = f_open(&fp, path, flags|FA_OPEN_ALWAYS);
     if (rv)
     {
         ESP_LOGE("UV_FS_OPEN", "Error in uv_fs_open. Code = %x", rv);
@@ -120,12 +105,8 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
         }
     }
 
-    rv = f_lseek(&file, offset);
-    if (rv != FR_OK)
-    {
-        ESP_LOGE("UV_FS_WRITE", "Error in f_lseek uv_fs_write. Code = %d", rv);
-        return 1;
-    }
+    FSIZE_t ind = f_tell(&file);
+    f_lseek(&file, f_size(&file));
 
     for(int i = 0; i < nbufs; i++){
         ESP_LOGI("UV_FS_WRITE", "%s %u", bufs[i].base, (UINT)bufs[i].len);
@@ -142,14 +123,9 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
         ESP_LOGE("UV_FS_WRITE", "Error in f_sync in uv_fs_write. Code = %d",rv);
     }
 
-    rv = f_rewind(&file);
-    if (rv != FR_OK)
-    {
-        ESP_LOGE("UV_FS_WRITE", "Error in uv_fs_write. Code = %d", rv);
-        return 1;
-    }
+    f_lseek(&file, ind);
 
-    return 0;
+    return bw;
 }
 
 int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb)
@@ -164,6 +140,7 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     FF_DIR dp;
     FILINFO fno;
 
+    free(req->path);
     req->path = malloc(sizeof(path));
     strcpy(req->path, path); 
     
@@ -266,13 +243,11 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
         }
     }
 
-    rv = f_open(&fp, path, UV_FS_O_RDONLY);
-    if(rv != FR_OK){
-        ESP_LOGE("UV_FS_STAT", "Error during f_open in uv_fs_stat code %d",rv);
-        return 1;
-    }
-
-    req->statbuf.st_size = f_size(&fp);
+    // rv = f_open(&fp, path, UV_FS_O_RDONLY);
+    // if(rv != FR_OK){
+    //     ESP_LOGE("UV_FS_STAT", "Error during f_open in uv_fs_stat code %d",rv);
+    //     return 1;
+    // }
 
     FILINFO fno;
 
@@ -283,12 +258,13 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     }
 
     req->statbuf.st_size = fno.fattrib;
+    req->statbuf.st_size = fno.fsize;
 
-    rv = f_close(&fp);
-    if(rv != FR_OK){
-        ESP_LOGE("UV_FS_STAT", "Error during f_close in uv_fs_stat");
-        return 1;
-    }
+    // rv = f_close(&fp);
+    // if(rv != FR_OK){
+    //     ESP_LOGE("UV_FS_STAT", "Error during f_close in uv_fs_stat");
+    //     return 1;
+    // }
 
     return 0;
 }
@@ -451,12 +427,15 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[
         }
     }
 
+    if(f_eof(&file))
+        return 0;
+
     rv = f_read(&file, buf.base, buf.len, &br);
     if (rv != FR_OK)
     {
         ESP_LOGE("UV_FS_READ", "Error in uv_fs_read. Code = %d", rv);
-        return 1;
+        return br;
     }
 
-    return 0;
+    return br;
 }

@@ -10,11 +10,12 @@ run_timer(uv_handle_t* handle){
     if(timer->timeout > loop->time)
         return;
 
+    timer->timer_cb(timer);
+
     rv = uv_timer_again(timer);
     if(rv != 0){
         ESP_LOGE("RUN_TIMER", "Error when calling uv_timer_again in run_timer");
     }
-    timer->timer_cb(timer);
 }
 
 static handle_vtbl_t timer_vtbl = {
@@ -82,13 +83,19 @@ uv_timer_again(uv_timer_t* handle){
     int rv;
 
     if(handle->repeat){
+        /* Save previous values before uv_timer_stop frees handle */
+        uv_timer_cb timer_cb = handle->timer_cb;
+        uint32_t repeat = handle->repeat;
+
         rv = uv_timer_stop(handle);
         if(rv != 0){
             ESP_LOGE("UV_TIMER_AGAIN", "Error when calling uv_timer_stop in uv_timer_again");
             return 1;
         }
 
-        rv = uv_timer_start(handle, handle->timer_cb, handle->repeat, handle->repeat);
+        uv_timer_t* new_handle = malloc(sizeof(uv_timer_t)); // could handle be reused even if it has been freed
+
+        rv = uv_timer_start(new_handle, timer_cb, repeat, repeat);
         if(rv != 0){
             ESP_LOGE("UV_TIMER_AGAIN", "Error when calling uv_timer_start in uv_timer_again");
             return 1;
