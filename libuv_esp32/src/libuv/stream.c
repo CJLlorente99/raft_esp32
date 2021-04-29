@@ -15,6 +15,7 @@ run_listen_handle(uv_handle_t* handle){
         return;
     }
 
+    listen_handle->stream->self.data = listen_handle->stream->data;
     listen_handle->cb(listen_handle->stream, listen_handle->status);
 
     rv = uv_remove_handle(listen_handle->loop->loopFSM->user_data, handle);
@@ -161,6 +162,7 @@ run_read_start_handle(uv_handle_t* handle){
         uv_buf_t* buf = malloc(sizeof(uv_buf_t));
         buf->len = 4*1024;
 
+        read_start_handle->stream->self.data = read_start_handle->stream->data;
         read_start_handle->buf = buf;
         read_start_handle->alloc_cb((uv_handle_t*) read_start_handle->stream, 4*1024, buf);
         read_start_handle->is_alloc = 1;
@@ -176,6 +178,7 @@ run_read_start_handle(uv_handle_t* handle){
             ESP_LOGE("run_read_start_handle", "Error during read in run_read_start_handle: errno %d", errno);
         }
 
+        read_start_handle->stream->self.data = read_start_handle->stream->data;
         read_start_handle->read_cb(read_start_handle->stream, read_start_handle->nread, read_start_handle->buf);
         // DO NOT uv_remove the read start handle (uv_read_stop is the one doing that)
     }
@@ -311,6 +314,7 @@ run_write_handle(uv_handle_t* handle){
 
         write_handle->status = 0;
 
+        write_handle->req.data = write_handle->data;
         write_handle->cb(write_handle, write_handle->status);
 
         rv = uv_remove_handle(write_handle->loop->loopFSM->user_data, handle);

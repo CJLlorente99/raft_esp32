@@ -19,6 +19,7 @@
 #include "esp_vfs_fat.h"
 #include "esp_vfs.h"
 #include "esp_system.h"
+#include "esp_sleep.h"
 
 /// Some global constants
 

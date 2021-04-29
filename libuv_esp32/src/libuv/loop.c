@@ -47,12 +47,22 @@ run_handlers (fsm_t* this){
     }
 }
 
+static void
+close_loop (fsm_t* this){
+    loopFSM_t* p_this = this->user_data;
+    p_this->loop_is_closing = 0;
+    p_this->last_n_active_handlers = p_this->n_active_handlers;
+    for(int i = 0; i < p_this->last_n_active_handlers; i++){
+        uv_remove_handle(this->user_data, p_this->active_handlers[i]);
+    }
+}
+
 /* FSM init */
 fsm_t* fsm_new_loopFSM (loopFSM_t* loop)
 {
 	static fsm_trans_t loopFSM_tt[] = {
         { RUN, check_all_handlers_run, RUN, run_handlers },
-        { RUN, check_is_closing, IDLE, NULL},
+        { RUN, check_is_closing, IDLE, close_loop},
         { IDLE, check_is_starting, RUN, run_handlers},
 		{ -1, NULL, -1, NULL},
 	};
@@ -77,7 +87,7 @@ uv_loop_init (uv_loop_t* loop){
 
     newLoopFSM->last_n_active_handlers = 0;
     newLoopFSM->loop_is_closing = 0;
-    newLoopFSM->loop_is_starting = 1;
+    newLoopFSM->loop_is_starting = 0;
     newLoopFSM->n_active_handlers = 0;
     newLoopFSM->n_handlers_run = 0;
     newLoopFSM->signal_isr_activated = 0;
@@ -113,10 +123,16 @@ uv_run (uv_loop_t* loop, uv_run_mode mode){ // uv_run_mode is not neccesary as o
     portTickType xLastTime = xTaskGetTickCount();
     const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
     ESP_LOGI("uv_run", "Entering uv_run");
+    ((loopFSM_t*)loop->loopFSM->user_data)->loop_is_starting = 1;
     while(true){
+        xLastTime = xTaskGetTickCount();
+        
         fsm_fire(loop->loopFSM);
-        // añadir sleep mode (CUIDADO CON LAS WIFI Y LAS CONEXIONES TCP)
-        vTaskDelayUntil(&xLastTime, xFrequency);
+
+        /* Configure timer wakeup for light sleep (does not reset anything) */
+        esp_sleep_enable_timer_wakeup(1000*pdTICKS_TO_MS(xLastTime + pdMS_TO_TICKS(LOOP_RATE_MS) - xTaskGetTickCount()));
+        esp_light_sleep_start();
+        // vTaskDelayUntil(&xLastTime, xFrequency);
     }
     return 1;
 }
@@ -143,6 +159,16 @@ handle_run(uv_handle_t* handle){
 void
 uv_close(uv_handle_t* handle, uv_close_cb close_cb){
     int rv = 0;
+
+    if(handle->type == UV_TIMER){
+        handle->data = ((uv_timer_t*)handle)->data;
+    } else if(handle->type == UV_TCP){
+        handle->data = ((uv_tcp_t*)handle)->data;
+    } else if(handle->type == UV_STREAM){
+        handle->data = ((uv_stream_t*)handle)->data;
+    } else if(handle->type == UV_SIGNAL){
+        handle->data = ((uv_signal_t*)handle)->data;
+    }
 
     close_cb(handle);
 

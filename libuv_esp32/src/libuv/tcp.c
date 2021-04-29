@@ -99,6 +99,7 @@ run_connect_handle(uv_handle_t* handle){
         // TODO
         // No siempre que sea = -1 es error. Usar errno para saber que tipo de error ha sido y si debe volver a intentarse
 
+    connect_handle->req.data = connect_handle->data;
     connect_handle->cb(connect_handle, connect_handle->status);
 
     rv = uv_remove_handle(connect_handle->loop->loopFSM->user_data, handle);
