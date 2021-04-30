@@ -29,6 +29,7 @@ uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
     handle->self.loop = loop;
     handle->self.type = UV_TIMER;
     handle->self.vtbl = &timer_vtbl;
+    handle->self.remove = 0;
 
     handle->loop = loop;
     handle->repeat = 0;
@@ -94,6 +95,12 @@ uv_timer_again(uv_timer_t* handle){
         }
 
         uv_timer_t* new_handle = malloc(sizeof(uv_timer_t)); // could handle be reused even if it has been freed
+
+        rv = uv_timer_init(handle->loop, new_handle);
+        if(rv != 0){
+            ESP_LOGE("UV_TIMER_AGAIN", "Error when calling uv_timer_init in uv_timer_again");
+            return 1;
+        }
 
         rv = uv_timer_start(new_handle, timer_cb, repeat, repeat);
         if(rv != 0){

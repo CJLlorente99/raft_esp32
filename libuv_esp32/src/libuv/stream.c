@@ -2,33 +2,7 @@
 
 /* Run function, vtbl and uv_listen */
 
-/* Run listen function listen on a given socket. If success, then cb is called. Then handle is removed */
-void
-run_listen_handle(uv_handle_t* handle){
-    int rv;
-    uv_listen_t* listen_handle = (uv_listen_t*)handle;
-
-    rv = listen(listen_handle->stream->socket, 1);
-    listen_handle->status = rv;
-    if(rv != 0){
-        ESP_LOGE("run_listen_handle", "Error durign listen in run_listen_handle: errno %d", errno);
-        return;
-    }
-
-    listen_handle->stream->self.data = listen_handle->stream->data;
-    listen_handle->cb(listen_handle->stream, listen_handle->status);
-
-    rv = uv_remove_handle(listen_handle->loop->loopFSM->user_data, handle);
-    if(rv != 0){
-        ESP_LOGE("run_listen_handle", "Unable to remove handle in run_listen_handle");
-        return;
-    }
-}
-
-static handle_vtbl_t listen_handle_vtbl = {
-    .run = run_listen_handle
-};
-
+/* Listen does not need from reactor */
 int
 uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
     // backlog indicates number of connection to be queued (only backlog = 1 is used in raft)
@@ -36,27 +10,13 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
 
     ((uv_tcp_t*)stream)->connection_cb = cb;
 
-    uv_listen_t* req = malloc(sizeof(uv_listen_t));
-    if(!req){
-        ESP_LOGE("uv_listen", "Error during malloc in uv_listen");
-        return 1;
-    }
-
-    req->req.loop = stream->loop;
-    req->req.type = UV_UNKNOWN_HANDLE;
-    req->req.vtbl = &listen_handle_vtbl;
-
-    req->cb = cb;
-    req->loop = stream->loop;
-    req->status = 0;
-    req->stream = stream;
-
-    /* Add handle */
-    rv = uv_insert_handle(stream->loop->loopFSM->user_data, (uv_handle_t*)req);
+    rv = listen(stream->socket, 1);
     if(rv != 0){
-        ESP_LOGE("uv_listen", "Error during uv_insert_request in uv_listen");
-        return 1;
+        ESP_LOGE("run_listen_handle", "Error durign listen in run_listen_handle: errno %d", errno);
     }
+
+    stream->self.data = stream->data;
+    cb(stream, rv);
         
     return 0;
 }
@@ -116,6 +76,7 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
     req->req.loop = server->loop;
     req->req.type = UV_UNKNOWN_HANDLE;
     req->req.vtbl = &accept_handle_vtbl;
+    req->req.remove = 0;
 
     req->client = client;
     req->loop = server->loop;
@@ -126,12 +87,15 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
     client->self.type = UV_STREAM;
     client->self.vtbl = NULL;
 
+    client->nreqs = 0;
     client->alloc_cb = NULL;
     client->loop = server->loop;
     client->read_cb = NULL;
     client->server = server;
     client->socket = -1;
     client->type = UV_STREAM;
+
+    add_req_to_stream(server, req);
 
     /* Add handle */
     rv = uv_insert_handle(server->loop->loopFSM->user_data, (uv_handle_t*)req);
@@ -204,6 +168,7 @@ uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
     req->req.loop = stream->loop;
     req->req.type = UV_READ_START;
     req->req.vtbl = &read_start_handle_vtbl;
+    req->req.remove = 0;
 
     req->alloc_cb = alloc_cb;
     req->buf = NULL;
@@ -212,6 +177,8 @@ uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
     req->nread = -1;
     req->read_cb = read_cb;
     req->stream = stream;
+
+    add_req_to_stream(stream, req);
 
     rv = uv_insert_handle(stream->loop->loopFSM->user_data, (uv_handle_t*)req);
     if(rv != 0){
@@ -222,60 +189,28 @@ uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
     return 0;
 }
 
-/* Run function, vtbl and uv_read_stop */
+/* Doesnt need from rector */
 
 /* Run read_stop function ceases reading started by read_start. First identifies the correspondent read_start handle and then removes it. */
-void
-run_read_stop_handle(uv_handle_t* handle){
-    uv_read_stop_t* read_stop_handle = (uv_read_stop_t*)handle;
-    loopFSM_t* loop = read_stop_handle->loop->loopFSM->user_data;
-    int rv;
-    /* Stop the correspoding read_start_request */
-    for(int i = 0; i < loop->n_active_handlers; i++){
-        if(loop->active_handlers[i]->type == UV_READ_START){
-            uv_read_start_t* read_start_handle = (uv_read_start_t*)loop->active_handlers[i];
-            if(read_start_handle->stream == read_stop_handle->stream){
-                rv = uv_remove_handle(loop, loop->active_handlers[i]);
-                if(rv != 0){
-                    ESP_LOGE("run_read_stop_handle", "Error during uv_remove in run_read_stop_handle");
-                    return;
-                }
-            } 
-            
-        }
-    }
-    rv = uv_remove_handle(loop, handle);
-    if(rv != 0){
-        ESP_LOGE("run_read_stop_handle", "Error during uv_remove in run_read_stop_handle");
-        return;
-    }
-}
-
-static handle_vtbl_t read_stop_handle_vtbl = {
-    .run = run_read_stop_handle
-};
 
 int
 uv_read_stop(uv_stream_t* stream){
     int rv;
+    loopFSM_t* loop = stream->loop->loopFSM->user_data;
 
-    uv_read_stop_t* req = malloc(sizeof(uv_read_stop_t));
-    if(!req){
-        ESP_LOGE("UV_READ_START", "Error during malloc in uv_read_start");
-        return 1;
-    }
-
-    req->req.loop = stream->loop;
-    req->req.type = UV_UNKNOWN_HANDLE;
-    req->req.vtbl = &read_stop_handle_vtbl;
-
-    req->loop = stream->loop;
-    req->stream = stream;
-
-    rv = uv_insert_handle(stream->loop->loopFSM->user_data, (uv_handle_t*)req);
-    if(rv != 0){
-        ESP_LOGE("uv_read_stop","Error during uv_insert in uv_read_stop");
-        return 1;
+    /* Stop the correspoding read_start_request */
+    for(int i = 0; i < loop->n_active_handlers; i++){
+        if(loop->active_handlers[i]->type == UV_READ_START){
+            uv_read_start_t* read_start_handle = (uv_read_start_t*)loop->active_handlers[i];
+            if(read_start_handle->stream == stream){
+                rv = uv_remove_handle(loop, loop->active_handlers[i]);
+                if(rv != 0){
+                    ESP_LOGE("run_read_stop_handle", "Error during uv_remove in run_read_stop_handle");
+                    return 1;
+                }
+                return 0;
+            } 
+        }
     }
 
     return 0;
@@ -338,6 +273,7 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     req->req.loop = handle->loop;
     req->req.type = UV_UNKNOWN_HANDLE;
     req->req.vtbl = &write_handle_vtbl;
+    req->req.remove = 0;
 
     req->bufs = bufs;
     req->cb = cb;
@@ -346,6 +282,8 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     req->status = 0;
     req->stream = handle;
     req->type = UV_UNKNOWN_HANDLE;
+
+    add_req_to_stream(handle, req);
 
     rv = uv_insert_handle(handle->loop->loopFSM->user_data, (uv_handle_t*)req);
     if(rv != 0){

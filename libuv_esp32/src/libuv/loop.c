@@ -36,6 +36,20 @@ check_is_starting (fsm_t* this){
 static void
 run_handlers (fsm_t* this){
     loopFSM_t* p_this = this->user_data;
+
+    /* First reorder  */
+    int j = 0;
+    for(int i = 0; i < p_this->n_active_handlers; i++){
+        if(p_this->active_handlers[i]->remove){
+            free(p_this->active_handlers[i]);
+        } else{
+            p_this->active_handlers[j++] = p_this->active_handlers[i];
+        }
+    }
+
+    p_this->n_active_handlers = j;
+
+    /* Second run every handler */
     p_this->loop_is_starting = 0;
     p_this->n_handlers_run = 0;
     uv_update_time(p_this);
@@ -125,14 +139,14 @@ uv_run (uv_loop_t* loop, uv_run_mode mode){ // uv_run_mode is not neccesary as o
     ESP_LOGI("uv_run", "Entering uv_run");
     ((loopFSM_t*)loop->loopFSM->user_data)->loop_is_starting = 1;
     while(true){
-        xLastTime = xTaskGetTickCount();
+        // xLastTime = xTaskGetTickCount();
         
         fsm_fire(loop->loopFSM);
 
         /* Configure timer wakeup for light sleep (does not reset anything) */
-        esp_sleep_enable_timer_wakeup(1000*pdTICKS_TO_MS(xLastTime + pdMS_TO_TICKS(LOOP_RATE_MS) - xTaskGetTickCount()));
-        esp_light_sleep_start();
-        // vTaskDelayUntil(&xLastTime, xFrequency);
+        // esp_sleep_enable_timer_wakeup(1000*pdTICKS_TO_MS(xLastTime + pdMS_TO_TICKS(LOOP_RATE_MS) - xTaskGetTickCount()));
+        // esp_light_sleep_start();
+        vTaskDelayUntil(&xLastTime, xFrequency);
     }
     return 1;
 }

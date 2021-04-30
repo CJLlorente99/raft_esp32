@@ -174,7 +174,7 @@ typedef void (*uv_timer_cb)(uv_timer_t* handle);
 
 // For stream/tcp purposes
 typedef void (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
-typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
+typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, uv_buf_t* buf);
 typedef void (*uv_connection_cb)(uv_stream_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
@@ -203,6 +203,7 @@ struct uv_handle_s {
     /* private */
     handle_vtbl_t* vtbl;
     int active;
+    int remove;
 };
 
 // virtual table for every handle
@@ -242,12 +243,6 @@ struct uv_write_s {
     uv_stream_t* stream;
 };
 
-struct uv_bind_s {
-    uv_handle_t req;
-    uv_loop_t* loop;
-    uv_tcp_t* tcp;
-};
-
 struct uv_connect_s {
     uv_handle_t req;
     /* public */
@@ -256,18 +251,10 @@ struct uv_connect_s {
     uv_req_type type;
     /* private */
     uv_loop_t* loop;
-    const struct sockaddr* dest_sockaddr;
+    const struct sockaddr dest_sockaddr;
     uv_connect_cb cb;
     int status;
     uv_tcp_t* tcp;
-};
-
-struct uv_listen_s {
-    uv_handle_t req;
-    uv_loop_t* loop;
-    uv_stream_t* stream;
-    uv_connection_cb cb;
-    int status;
 };
 
 struct uv_accept_s {
@@ -286,12 +273,6 @@ struct uv_read_start_s {
     uv_buf_t* buf;
     ssize_t nread;
     int is_alloc : 1;
-};
-
-struct uv_read_stop_s {
-    uv_handle_t req;
-    uv_loop_t* loop;
-    uv_stream_t* stream;
 };
 
 struct uv_fs_s {
@@ -361,6 +342,8 @@ struct uv_stream_s {
     uv_alloc_cb alloc_cb;
     uv_tcp_t* server;
     int socket;
+    uv_handle_t* reqs[40];
+    int nreqs;
 };
 
 
@@ -376,6 +359,8 @@ struct uv_tcp_s {
     uv_alloc_cb alloc_cb;
     uv_tcp_t* server;
     int socket;
+    uv_handle_t* reqs[40];
+    int nreqs;
 
     /* tcp-only */
     const struct sockaddr* src_sockaddr;
@@ -433,7 +418,7 @@ struct loopFSM_s
     int loop_is_starting : 1;
     int signal_isr_activated : 1;
 
-    uv_handle_t* active_handlers[40]; // asi, al añadir nuevos handler no hace falta volver a crear el fsm_t. con este puntero y el numero de handlers itero sobre todos
+    uv_handle_t* active_handlers[40]; 
     int n_active_handlers; // number of signal handlers
     int last_n_active_handlers;
     int n_handlers_run; // number of signal handlers that have been run
@@ -497,6 +482,7 @@ int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb, uv_after_
 // Core function prototypes
 int uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle);
 int uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle);
+void add_req_to_stream(uv_stream_t* stream, uv_handle_t* req);
 
 // Miscelaneous function prototypes
 

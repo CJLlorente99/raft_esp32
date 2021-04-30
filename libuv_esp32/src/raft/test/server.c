@@ -356,7 +356,7 @@ static void mainSigintCb(struct uv_signal_s *handle, int signum)
     ServerClose(server, mainServerCloseCb);
 }
 
-int main()
+int main_raft()
 {
     struct uv_loop_s loop;
     struct uv_signal_s sigint; /* To catch SIGINT and exit. */

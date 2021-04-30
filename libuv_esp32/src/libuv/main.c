@@ -98,94 +98,12 @@ main_signal(void* ignore){
     vTaskDelete(NULL);
 }
 
-// CHECK TEST
-
-#define LED_CHECK_TEST_PORT 14
-
-// #define LED_DEBUG_PORT 5
-
-void
-check_callback (uv_check_t* handle){
-    static bool led_state = 0;
-    gpio_set_level(LED_CHECK_TEST_PORT,(int)led_state);
-    led_state = !led_state;
-}
-
-void
-check_callback2 (uv_check_t* handle){
-    static int count = 0;
-    ESP_LOGI("check_callback2","%d",count++);
-}
-
-void
-main_check(void* ignore){
-    // Configure GPIO
-    gpio_config_t io_conf;
-
-    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
-    io_conf.pin_bit_mask = 1ULL<<LED_CHECK_TEST_PORT;
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    gpio_config(&io_conf);
-
-    // Init loop
-    uv_loop_t* loop = malloc(sizeof(uv_loop_t));
-    int rv;
-
-    rv = uv_loop_init(loop);
-    if(rv != 0){
-        ESP_LOGE("LOOP_INIT","Error durante la inicializacion en main_signal");
-    }
-
-    ESP_LOGI("LOOP_INIT", "Loop inicializado en main_signal");
-
-    // Init signal handle
-    uv_check_t* check_handle = malloc(sizeof(uv_check_t));
-
-    rv = uv_check_init(loop, check_handle);
-    if(rv != 0){
-        ESP_LOGE("CHECK_INIT","Error durante la primera inicializacion en main_check");
-    }
-
-    ESP_LOGI("CHECK_INIT", "Primer signal inicializado en main_check");
-
-    rv = uv_check_start(check_handle, check_callback);
-    if(rv != 0){
-        ESP_LOGE("CHECK_START","Error durante primer uv_check_start en main_check");
-    }
-
-    uv_check_t* check_handle2 = malloc(sizeof(uv_check_t));
-
-    rv = uv_check_init(loop, check_handle2);
-    if(rv != 0){
-        ESP_LOGE("CHECK_INIT","Error durante la primera inicializacion en main_check");
-    }
-
-    ESP_LOGI("CHECK_INIT", "Primer signal inicializado en main_check");
-
-    // Aqui hay un error
-    rv = uv_check_start(check_handle2, check_callback2);
-    if(rv != 0){
-        ESP_LOGE("CHECK_START","Error durante primer uv_check_start en main_check");
-    }
-
-    ESP_LOGI("CHECK_START", "Primer uv_check_start en main_check");
-
-    rv = uv_run(loop, UV_RUN_DEFAULT);
-    if(rv != 0){
-        ESP_LOGE("UV_RUN","Error durante uv_run");
-    }
-
-    vTaskDelete(NULL);
-}
-
 // TIMER TEST
 
 // #define ONE_SHOT_CLOCK_TRIGGER_PORT 15
 // #define LED_ONE_SHOT_PORT 17
 // #define LED_TWO_SEC_PORT 18
-#define LED_HALF_SEC_PORT 2
+#define LED_HALF_SEC_PORT 14
 
 void
 half_sec_callback_on (uv_timer_t* handle){
@@ -281,67 +199,106 @@ alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf){
 }
 
 void
-read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf){
+read_cb(uv_stream_t* stream, ssize_t nread, uv_buf_t* buf){
     if(nread < 0)
         return;
 
     if(nread == buf->len){ // stop reading, everything expected has been read
-        ESP_LOGI("READ_CB", "Everything received = %s", buf->base);
-        free(buf->base);
-        free(buf);
+        ESP_LOGI("READ_CB", "Everything received = %s", buf->base+nread-4096);
+        // free(buf->base);
+        // free(buf);
         uv_read_stop(stream);
-        uv_read_start(stream, alloc_cb, read_cb);
         return;
     } else if(nread == 0){ // more info is going to be read, well be called afterwards
         return;
     } else if(nread < buf->len){ // more info is going to be read, well be called afterwards
+        buf->len -= nread;
+        buf->base += nread;
         return;
     }
 }
 
 void
-connect_cb(uv_connect_t* req, int status){
+timer_client(uv_timer_t* handle){
+    uv_read_start((uv_stream_t*)tcp_client, alloc_cb, read_cb);
+}
+void connect_cb(uv_connect_t* req, int status);
+void
+resetSocketCb(uv_handle_t* handle){
+    uv_loop_t* loop = handle->data;
     int rv;
-    ESP_LOGI("connect_cb", "Entered connect_cb with status = %d", status);
 
-    rv = uv_read_start((uv_stream_t*)tcp_client, alloc_cb, read_cb);
+    rv = uv_tcp_init(loop, tcp_client);
     if(rv != 0){
-        ESP_LOGE("connect_cb","Error while trying to read_start");
+        ESP_LOGE("resetSocketCb", "Error in first uv_tcp_init in main_tcp");
     }
+
+    ESP_LOGI("resetSocketCb", "First uv_tcp_init success");
+
+    struct sockaddr_in client_addr;
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = htons(50001);
+    client_addr.sin_addr.s_addr = inet_addr(LOCALIP);
+
+    rv = uv_tcp_bind(tcp_client, (struct sockaddr*)&client_addr, 0);
+    if(rv != 0){
+        ESP_LOGE("resetSocketCb", "Error in uv_tcp_bind in main_tcp");
+    }
+
+    ESP_LOGI("resetSocketCb", "uv_tcp_bind success");
+
+    uv_connect_t* req = malloc(sizeof(uv_connect_t));
+
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(50000);
+    server_addr.sin_addr.s_addr = inet_addr(CLIENTIP);
+
+    rv = uv_tcp_connect(req, tcp_client, (struct sockaddr*)&server_addr, connect_cb);
+    if(rv != 0){
+        ESP_LOGE("resetSocketCb", "Error in uv_tcp_connect in main_tcp");
+    }
+
+    ESP_LOGI("resetSocketCb", "uv_tcp_connect success"); 
 }
 
+void
+connect_cb(uv_connect_t* req, int status){
+    ESP_LOGI("connect_cb", "Entered connect_cb with status = %d", status);
+
+    // Try to connect again if connection has failed
+    if(status != 0){
+        if(errno == 104){
+            tcp_client->data = req->loop;
+            uv_close(tcp_client, resetSocketCb);
+        }
+        return;
+    }
+
+    uv_timer_t* timer = malloc(sizeof(uv_timer_t));
+    uv_timer_init(req->loop, timer);
+    uv_timer_start(timer, timer_client, 0, 2000);
+}
+
+void timer_cb(uv_timer_t* handle);
 void
 write_cb(uv_write_t* req, int status){
     int rv;
 
+    free(req->bufs->base);
+    free(req->bufs);
     ESP_LOGI("WRITE_CB", "Write callback has been called with status = %d", status);
 
-    free(req->bufs);
-    uv_buf_t* buf = malloc(sizeof(uv_buf_t));
-    memset(buf, 0, sizeof(uv_buf_t));
-    buf->base = malloc(4*1024);
-    strcpy(buf->base, "Saludos");
-    buf->len = 4*1024;
+    uv_timer_t* timer = malloc(sizeof(uv_timer_t));
+    timer->data = req->data;
+    rv = uv_timer_init(req->loop, timer);
 
-    ESP_LOGI("write_cb", "uv_write");
-    rv = uv_write(req, req->stream, buf, 1, write_cb);
-    if(rv != 0){
-        ESP_LOGE("write_cb","Error while trying to write");
-    }
+    rv = uv_timer_start(timer, timer_cb, 2000, 0);
 }
 
 void
-connection_cb(uv_stream_t* server, int status){
+timer_cb(uv_timer_t* handle){
     int rv;
-    ESP_LOGI("CONNECTION_CB", "Connection callback has been called with status = %d", status);
-
-    uv_stream_t* client = malloc(sizeof(uv_stream_t));
-    memset(client, 0, sizeof(uv_stream_t));
-    ESP_LOGI("CONNECTION_CB", "uv_accept");
-    rv = uv_accept(server, client);
-    if(rv != 0){
-        ESP_LOGE("CONNECTION_CB", "Error while trying to accept");
-    }
 
     uv_write_t* req = malloc(sizeof(uv_write_t));
     uv_buf_t* buf = malloc(sizeof(uv_buf_t));
@@ -350,11 +307,85 @@ connection_cb(uv_stream_t* server, int status){
     strcpy(buf->base, "Saludos");
     buf->len = 4*1024;
 
-    ESP_LOGI("CONNECTION_CB", "uv_write");
-    rv = uv_write(req, client, buf, 1, write_cb);
+    req->data = handle->data;
+    ESP_LOGI("timer_cb", "uv_write");
+    rv = uv_write(req, handle->data, buf, 1, write_cb);
     if(rv != 0){
-        ESP_LOGE("TCP_TIMER_CB","Error while trying to write");
+        ESP_LOGE("timer_cb","Error while trying to write");
     }
+
+    uv_timer_stop(handle);
+}
+
+void
+connection_cb(uv_stream_t* server, int status){
+    int rv;
+    ESP_LOGI("CONNECTION_CB", "Connection callback has been called with status = %d", status);
+
+    // If listen has failed, try again
+    if(status != 0){
+        tcp_server->data = malloc(sizeof(uv_stream_t));
+
+        rv = uv_listen((uv_stream_t*)tcp_server, 1, connection_cb);
+        if(rv != 0){
+            ESP_LOGE("UV_LISTEN", "Error in uv_listen in main_tcp");
+        }
+        return;
+    }
+
+    ESP_LOGI("CONNECTION_CB", "uv_accept");
+    rv = uv_accept(server, tcp_server->data);
+    if(rv != 0){
+        ESP_LOGE("CONNECTION_CB", "Error while trying to accept");
+    }
+
+    uv_timer_t* timer = malloc(sizeof(uv_timer_t));
+    timer->data = tcp_server->data;
+    rv = uv_timer_init(server->loop, timer);
+
+    rv = uv_timer_start(timer, timer_cb, 2000, 0);
+}
+
+void
+startClientCb(uv_timer_t* timer){
+    tcp_client = malloc(sizeof(uv_tcp_t));
+    int rv;
+    uv_loop_t* loop = timer->data;
+
+    rv = uv_tcp_init(loop, tcp_client);
+    if(rv != 0){
+        ESP_LOGE("startClientCb", "Error in first uv_tcp_init in main_tcp");
+    }
+
+    ESP_LOGI("startClientCb", "First uv_tcp_init success");
+
+    struct sockaddr_in client_addr;
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = htons(50001);
+    client_addr.sin_addr.s_addr = inet_addr(LOCALIP);
+
+    rv = uv_tcp_bind(tcp_client, (struct sockaddr*)&client_addr, 0);
+    if(rv != 0){
+        ESP_LOGE("startClientCb", "Error in uv_tcp_bind in main_tcp");
+    }
+
+    ESP_LOGI("startClientCb", "uv_tcp_bind success");
+
+    uv_connect_t* req = malloc(sizeof(uv_connect_t));
+
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(50000);
+    server_addr.sin_addr.s_addr = inet_addr(CLIENTIP);
+
+    rv = uv_tcp_connect(req, tcp_client, (struct sockaddr*)&server_addr, connect_cb);
+    if(rv != 0){
+        ESP_LOGE("startClientCb", "Error in uv_tcp_connect in main_tcp");
+    }
+
+    ESP_LOGI("startClientCb", "uv_tcp_connect success"); 
+
+    uv_timer_stop(timer);
 }
 
 void
@@ -371,70 +402,42 @@ main_tcp(void* ignore){
 
     ESP_LOGI("LOOP_INIT", "Loop inicializado en main_tcp");
 
-    // Init server side
-    // tcp_server = malloc(sizeof(uv_tcp_t));
+    // // Init server side
+    tcp_server = malloc(sizeof(uv_tcp_t));
 
-    // rv = uv_tcp_init(loop, tcp_server);
-    // if(rv != 0){
-    //     ESP_LOGE("TCP_INIT", "Error in first uv_tcp_init in main_tcp");
-    // }
-
-    // ESP_LOGI("TCP_INIT", "First uv_tcp_init success");
-
-    // struct sockaddr_in local_addr;
-    // local_addr.sin_family = AF_INET;
-    // local_addr.sin_port = htons(50000);
-    // local_addr.sin_addr.s_addr = inet_addr(LOCALIP);
-
-    // rv = uv_tcp_bind(tcp_server, (struct sockaddr*)&local_addr, 0);
-    // if(rv != 0){
-    //     ESP_LOGE("TCP_BIND", "Error in uv_tcp_bind in main_tcp");
-    // }
-
-    // ESP_LOGI("TCP_BIND", "uv_tcp_bind success");
-
-    // rv = uv_listen((uv_stream_t*)tcp_server, 1, connection_cb);
-    // if(rv != 0){
-    //     ESP_LOGE("UV_LISTEN", "Error in uv_listen in main_tcp");
-    // }
-
-    // ESP_LOGI("UV_LISTEN", "uv_listen success");
-
-    // Init client side
-    tcp_client = malloc(sizeof(uv_tcp_t));
-
-    rv = uv_tcp_init(loop, tcp_client);
+    rv = uv_tcp_init(loop, tcp_server);
     if(rv != 0){
         ESP_LOGE("TCP_INIT", "Error in first uv_tcp_init in main_tcp");
     }
 
     ESP_LOGI("TCP_INIT", "First uv_tcp_init success");
 
-    struct sockaddr_in client_addr;
-    client_addr.sin_family = AF_INET;
-    client_addr.sin_port = htons(50001);
-    client_addr.sin_addr.s_addr = inet_addr(LOCALIP);
+    struct sockaddr_in local_addr;
+    local_addr.sin_family = AF_INET;
+    local_addr.sin_port = htons(50000);
+    local_addr.sin_addr.s_addr = inet_addr(LOCALIP);
 
-    rv = uv_tcp_bind(tcp_client, (struct sockaddr*)&client_addr, 0);
+    rv = uv_tcp_bind(tcp_server, (struct sockaddr*)&local_addr, 0);
     if(rv != 0){
         ESP_LOGE("TCP_BIND", "Error in uv_tcp_bind in main_tcp");
     }
 
     ESP_LOGI("TCP_BIND", "uv_tcp_bind success");
 
-    uv_connect_t* req = malloc(sizeof(uv_connect_t));
+    tcp_server->data = malloc(sizeof(uv_stream_t));
 
-    struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(50000);
-    server_addr.sin_addr.s_addr = inet_addr(CLIENTIP);
-
-    rv = uv_tcp_connect(req, tcp_client, (struct sockaddr*)&server_addr, connect_cb);
+    rv = uv_listen((uv_stream_t*)tcp_server, 1, connection_cb);
     if(rv != 0){
-        ESP_LOGE("TCP_CONNECT", "Error in uv_tcp_connect in main_tcp");
+        ESP_LOGE("UV_LISTEN", "Error in uv_listen in main_tcp");
     }
 
-    ESP_LOGI("TCP_CONNECT", "uv_tcp_connect success"); 
+    ESP_LOGI("UV_LISTEN", "uv_listen success");
+
+    // Init client side
+    uv_timer_t* timer_client = malloc(sizeof(uv_timer_t));
+    uv_timer_init(loop, timer_client);
+    timer_client->data = loop;
+    uv_timer_start(timer_client, startClientCb, 1000, 0);
 
     rv = uv_run(loop, UV_RUN_DEFAULT);
     if(rv != 0){
@@ -728,8 +731,7 @@ void app_main(void)
     ESP_LOGI("APP_MAIN", "FAT filesystem mounted succesfully");
 
     // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_check, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
-    xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
+    xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
 }
