@@ -7,19 +7,26 @@
 #include <stdbool.h>
 #include <sys/time.h>
 #include <string.h>
-
+#include "ff.h"
 #include "fsm.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "lwip/sockets.h"
 #include "lwip/err.h"
-#include "ff.h"
+
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
 #include "esp_vfs.h"
 #include "esp_system.h"
 #include "esp_sleep.h"
+#include "esp_heap_caps.h"
+
+// RAFT
+
+#define SERVERIP "192.168.0.201"
+// #define SERVERIP "192.168.0.202"
+// #define SERVERIP "192.168.0.203"
 
 /// Some global constants
 
@@ -28,15 +35,10 @@
 
 // fs flags
 
-#define FF_FS_READONLY  0
-#define FF_FS_MINIMIZE  0
-#define CONFIG_FATFS_LFN_STACK   1
-#define CONFIG_FATFS_MAX_LFN      1
-
 #define UV_FS_O_APPEND FA_OPEN_APPEND // No se usa
 #define UV_FS_O_CREAT   FA_OPEN_ALWAYS
 #define UV_FS_O_DIRECT  0
-#define UV_FS_O_DIRECTORY   0 // Se usa, if the file is not a directory file to open
+#define UV_FS_O_DIRECTORY   0x50
 #define UV_FS_O_DSYNC   0
 #define UV_FS_O_EXCL    FA_CREATE_NEW // it does not exactly mean this
 #define UV_FS_O_EXLOCK  0
@@ -487,5 +489,8 @@ void add_req_to_stream(uv_stream_t* stream, uv_handle_t* req);
 // Miscelaneous function prototypes
 
 int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
+
+// Main raft
+int main_raft();
 
 #endif /* UV_H */

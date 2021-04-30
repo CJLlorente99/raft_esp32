@@ -34,7 +34,6 @@ int UvOsClose(uv_file fd)
 
 int UvOsFallocate(uv_file fd, off_t offset, off_t len)
 {
-    // TODO (maybe use f_expand)
     FRESULT fr;
     fr = f_expand(&fd, len, 1);
     if (fr != 0) {

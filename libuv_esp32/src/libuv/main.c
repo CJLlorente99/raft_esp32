@@ -462,13 +462,6 @@ newFileDir1 (uv_signal_t* handle, int signum){
     FRESULT fr;
     uv_fs_t req;
     const char* path = "dir1/example.txt";
-
-    ESP_LOGI("NEWFILEDIR1", "f_mkdir");
-    fr = f_mkdir("dir1");
-    if((fr != FR_EXIST) && (fr != FR_OK)){
-        ESP_LOGE("NEWFILEDIR1", "f_mkdir : %d", fr);
-    }
-    ESP_LOGI("NEWFILEDIR1", "f_mkdir successful");
     
     ESP_LOGI("NEWFILEDIR1", "uv_fs_open");
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
@@ -506,13 +499,6 @@ newFile2Dir1 (uv_signal_t* handle, int signum){
     FRESULT fr;
     uv_fs_t req;
     const char* path = "dir1/example2.txt";
-
-    ESP_LOGI("newFile2Dir1", "f_mkdir");
-    fr = f_mkdir("dir1");
-    if((fr != FR_EXIST) && (fr != FR_OK)){
-        ESP_LOGE("newFile2Dir1", "f_mkdir : %d", fr);
-    }
-    ESP_LOGI("newFile2Dir1", "f_mkdir successful");
     
     ESP_LOGI("newFile2Dir1", "uv_fs_open");
     file = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
@@ -580,6 +566,14 @@ info(uv_signal_t* handle, int signum){
     ESP_LOGI("INFO", "print results");
     uv_buf_t buf;
 
+    ESP_LOGI("INFO", "check directory");
+    rv = uv_fs_stat(NULL, &req, "dir1", NULL);
+    ESP_LOGI("INFO", "%d", req.statbuf.st_mode);
+
+    ESP_LOGI("INFO", "check inexistent");
+    rv = uv_fs_stat(NULL, &req, "dir1/EXAMPLE1.TEXT", NULL);
+    ESP_LOGI("INFO", "%d", rv);
+
     for(int i = 0; i < n; i++){
         ESP_LOGI("INFO", "uv_fs_scandir_next");
         rv = uv_fs_scandir_next(&req, &ent);
@@ -622,6 +616,8 @@ main_fs(void* ignore){
     io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf); 
+
+    f_mkdir("dir1");
 
     // Init loop
     uv_loop_t* loop = malloc(sizeof(uv_loop_t));
@@ -704,7 +700,7 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // Init WiFi with static IP
-    wifi_init(LOCALIP);
+    wifi_init(SERVERIP);
 
     // Mount FAT-VFS
     ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
@@ -732,6 +728,8 @@ void app_main(void)
 
     // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
-    xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
+    // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
+    xTaskCreate(main_raft, "startup", 32768, NULL, 5, NULL);
+
 }

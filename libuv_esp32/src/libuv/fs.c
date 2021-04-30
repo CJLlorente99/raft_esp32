@@ -105,25 +105,18 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
         }
     }
 
-    FSIZE_t ind = f_tell(&file);
-    f_lseek(&file, f_size(&file));
-
     for(int i = 0; i < nbufs; i++){
-        ESP_LOGI("UV_FS_WRITE", "%s %u", bufs[i].base, (UINT)bufs[i].len);
         rv = f_write(&file, (BYTE*)bufs[i].base, bufs[i].len, &bw);
         if (rv != FR_OK || (bw != (bufs[i].len))){
             ESP_LOGE("UV_FS_WRITE", "Error in f_write uv_fs_write. Code = %d, bw = %u", rv, bw);
             return 1;
         }
-        ESP_LOGI("UV_FS_WRITE", "%d bytes written, size is %d bytes", bw, f_size(&file));
     }
 
     rv = f_sync(&file);
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_WRITE", "Error in f_sync in uv_fs_write. Code = %d",rv);
     }
-
-    f_lseek(&file, ind);
 
     return bw;
 }
@@ -140,7 +133,6 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     FF_DIR dp;
     FILINFO fno;
 
-    free(req->path);
     req->path = malloc(sizeof(path));
     strcpy(req->path, path); 
     
@@ -243,28 +235,19 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
         }
     }
 
-    // rv = f_open(&fp, path, UV_FS_O_RDONLY);
-    // if(rv != FR_OK){
-    //     ESP_LOGE("UV_FS_STAT", "Error during f_open in uv_fs_stat code %d",rv);
-    //     return 1;
-    // }
-
     FILINFO fno;
 
     rv = f_stat(path, &fno);
+    if(rv == FR_NO_FILE){
+        return UV_ENOENT;
+    }
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_STAT", "Error during f_stat in uv_fs_stat code %d",rv);
-        return 1;
+        return;
     }
 
-    req->statbuf.st_size = fno.fattrib;
+    req->statbuf.st_mode = fno.fattrib;
     req->statbuf.st_size = fno.fsize;
-
-    // rv = f_close(&fp);
-    // if(rv != FR_OK){
-    //     ESP_LOGE("UV_FS_STAT", "Error during f_close in uv_fs_stat");
-    //     return 1;
-    // }
 
     return 0;
 }
@@ -356,13 +339,6 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset,
     }
 
     rv = f_truncate(&file);
-    if (rv != FR_OK)
-    {
-        ESP_LOGE("UV_FS_FTRUNCATE", "Error in uv_fs_ftruncate. Code = %d", rv);
-        return 1;
-    }
-
-    rv = f_lseek(&file, 0);
     if (rv != FR_OK)
     {
         ESP_LOGE("UV_FS_FTRUNCATE", "Error in uv_fs_ftruncate. Code = %d", rv);

@@ -22,6 +22,7 @@ uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){
     handle->self.loop = loop;
     handle->self.type = UV_SIGNAL;
     handle->self.vtbl = &signal_vtbl;
+    handle->self.remove = 0;
 
     handle->intr_bit = 0;
     handle->loop = loop;

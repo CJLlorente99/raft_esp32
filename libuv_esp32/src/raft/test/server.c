@@ -193,7 +193,7 @@ static int ServerInit(struct Server *s,
     s->id = id;
 
     /* Render the address. */
-    // sprintf(s->address, "127.0.0.1:900%d", id);
+    sprintf(s->address, SERVERIP);
 
     /* Initialize and start the engine, using the libuv-based I/O backend. */
     rv = raft_init(&s->raft, &s->io, &s->fsm, id, s->address);
@@ -208,7 +208,7 @@ static int ServerInit(struct Server *s,
     for (i = 0; i < N_SERVERS; i++) {
         char address[64];
         unsigned server_id = i + 1;
-        // sprintf(address, "127.0.0.1:900%d", server_id);
+        sprintf(address, "192.168.0.20%d", server_id);
         rv = raft_configuration_add(&configuration, server_id, address,
                                     RAFT_VOTER);
         if (rv != 0) {
@@ -216,17 +216,25 @@ static int ServerInit(struct Server *s,
             goto err_after_configuration_init;
         }
     }
+
+    ESP_LOGI("","server init finished");
     rv = raft_bootstrap(&s->raft, &configuration);
     if (rv != 0 && rv != RAFT_CANTBOOTSTRAP) {
         goto err_after_configuration_init;
     }
+    ESP_LOGI("","server init finished");
+
     raft_configuration_close(&configuration);
+
+    ESP_LOGI("","server init finished");
 
     raft_set_snapshot_threshold(&s->raft, 64);
     raft_set_snapshot_trailing(&s->raft, 16);
     raft_set_pre_vote(&s->raft, true);
 
     s->transfer.data = s;
+
+    ESP_LOGI("","server init finished");
 
     return 0;
 
@@ -366,10 +374,8 @@ int main_raft()
     int rv;
 
     dir = "DIR1";
-    id = 0;
-
-    /* Ignore SIGPIPE, see https://github.com/joyent/libuv/issues/1254 */
-    // signal(SIGPIPE, SIG_IGN);
+    f_mkdir(dir);
+    id = 1;
 
     /* Initialize the libuv loop. */
     rv = uv_loop_init(&loop);
@@ -391,7 +397,7 @@ int main_raft()
         goto err_after_server_init;
     }
     sigint.data = &server;
-    rv = uv_signal_start(&sigint, mainSigintCb, SIGINT);
+    rv = uv_signal_start(&sigint, mainSigintCb, 19);
     if (rv != 0) {
         ESP_LOGE("MAIN", "uv_signal_start(): %d", rv);
         goto err_after_signal_init;

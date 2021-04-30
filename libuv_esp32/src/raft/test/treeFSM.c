@@ -1,4 +1,5 @@
 #include "treeFSM.h"
+#include "uv.h"
 
 // Variables
 static FlagsType flags;
@@ -48,12 +49,10 @@ blue_on (fsm_t* this)
 	p_treeFSM = (TreeFSM*)(this->user_data);
 
 	p_treeFSM->color_shining = 1;
+    ESP_LOGI("user_FSM", "color shining is %d", p_treeFSM->color_shining);
 
 	flags.color = 0;
 
-    GPIO_OUTPUT_SET(BLUE_LED,1);
-	GPIO_OUTPUT_SET(YELLOW_LED,0);
-	GPIO_OUTPUT_SET(GREEN_LED,0);
 }
 
 static void
@@ -63,12 +62,10 @@ yellow_on (fsm_t* this)
 	p_treeFSM = (TreeFSM*)(this->user_data);
 
 	p_treeFSM->color_shining = 2;
+    ESP_LOGI("user_FSM", "color shining is %d", p_treeFSM->color_shining);
 
 	flags.color = 0;
 
-    GPIO_OUTPUT_SET(BLUE_LED,0);
-	GPIO_OUTPUT_SET(YELLOW_LED,1);
-	GPIO_OUTPUT_SET(GREEN_LED,0);
 }
 
 static void
@@ -78,12 +75,10 @@ green_on (fsm_t* this)
 	p_treeFSM = (TreeFSM*)(this->user_data);
 
 	p_treeFSM->color_shining = 3;
+    ESP_LOGI("user_FSM", "color shining is %d", p_treeFSM->color_shining);
 
 	flags.color = 0;
 
-    GPIO_OUTPUT_SET(BLUE_LED,0);
-	GPIO_OUTPUT_SET(YELLOW_LED,0);
-	GPIO_OUTPUT_SET(GREEN_LED,1);
 }
 
 // FSM init
@@ -105,10 +100,6 @@ fsm_t* fsm_new_treeFSM ()
 
     TreeFSM* treeFSM = malloc(sizeof(TreeFSM));
     treeFSM->color_shining = 0;
-
-	GPIO_OUTPUT_SET(YELLOW_LED,1);
-	GPIO_OUTPUT_SET(BLUE_LED, 1);
-	GPIO_OUTPUT_SET(GREEN_LED, 1);
 
 	srand(1);
 

@@ -51,19 +51,6 @@ int UvFsCheckDir(const char *dir, char *errmsg)
 
 int UvFsSyncDir(const char *dir, char *errmsg)
 {
-    uv_file fd;
-    int rv;
-    rv = UvOsOpen(dir, UV_FS_O_RDONLY | UV_FS_O_DIRECTORY, 0, &fd);
-    if (rv != 0) {
-        UvOsErrMsg(errmsg, "open directory", rv);
-        return RAFT_IOERR;
-    }
-    rv = UvOsFsync(fd);
-    UvOsClose(fd);
-    if (rv != 0) {
-        UvOsErrMsg(errmsg, "fsync directory", rv);
-        return RAFT_IOERR;
-    }
     return 0;
 }
 

@@ -1,6 +1,7 @@
 #include "heap.h"
 
 #include <stdlib.h>
+#include "esp_heap_caps.h"
 
 #include "../../include/raft.h"
 
@@ -31,7 +32,7 @@ static void *defaultRealloc(void *data, void *ptr, size_t size)
 static void *defaultAlignedAlloc(void *data, size_t alignment, size_t size)
 {
     (void)data;
-    return aligned_alloc(alignment, size);
+    return heap_caps_aligned_alloc(alignment, size, MALLOC_CAP_8BIT);
 }
 
 static void defaultAlignedFree(void *data, size_t alignment, void *ptr)
