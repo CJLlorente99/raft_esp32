@@ -10,18 +10,9 @@ uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp){
     tcp->self.remove = 0;
 
     tcp->nreqs = 0;
-    tcp->alloc_cb = NULL;
-    tcp->close_cb = NULL;
-    tcp->connect_cb = NULL;
-    tcp->connection_cb = NULL;
-    tcp->flags = 0;
     tcp->loop = loop;
-    tcp->read_cb = NULL;
-    tcp->server = tcp;
     tcp->socket = -1;
-    tcp->src_sockaddr = NULL;
     tcp->type = UV_TCP;
-    tcp->write_cb = NULL;
 
     /* Try to create socket */
     tcp->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -41,8 +32,6 @@ uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp){
 int
 uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
     int rv;
-
-    handle->src_sockaddr = addr;
 
     rv = bind(handle->socket, addr, sizeof(struct sockaddr));
     if(rv != 0){
@@ -72,11 +61,13 @@ run_connect_handle(uv_handle_t* handle){
     connect_handle->req.data = connect_handle->data;
     connect_handle->cb(connect_handle, connect_handle->status);
 
-    rv = uv_remove_handle(connect_handle->loop->loopFSM->user_data, handle);
+    rv = uv_remove_handle(connect_handle->loop->loop, handle);
     if(rv != 0){
         ESP_LOGE("run_connect_handle", "Unable to remove handle in run_connect_handle");
         return;
     }
+
+    remove_req_from_stream(handle->loop->loop, handle);
 }
 
 static handle_vtbl_t connect_handle_vtbl = {
@@ -91,6 +82,7 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     req->req.type = UV_UNKNOWN_HANDLE;
     req->req.vtbl = &connect_handle_vtbl;
     req->req.remove = 0;
+    req->req.active = 1;
 
     req->cb = cb;
     memcpy(&req->dest_sockaddr, addr, sizeof(struct sockaddr));
@@ -102,7 +94,7 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     add_req_to_stream((uv_stream_t*)handle, req);
 
     /* Add handle */
-    rv = uv_insert_handle(handle->loop->loopFSM->user_data, (uv_handle_t*)req);
+    rv = uv_insert_handle(handle->loop->loop, (uv_handle_t*)req);
     if(rv != 0){
         ESP_LOGE("uv_tcp_connect", "Error during uv_insert_request in uv_tcp_connect");
     }

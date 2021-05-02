@@ -9,7 +9,7 @@ run_work_handle(uv_handle_t* handle){
     work_handle->work_cb(work_handle);
     work_handle->after_work_cb(work_handle, 0);
 
-    rv = uv_remove_handle(work_handle->loop->loopFSM->user_data, handle);
+    rv = uv_remove_handle(work_handle->loop->loop, handle);
     if(rv != 0){
         ESP_LOGE("run_work_handle", "Error during uv_remove in run_work_handle");
         return;
@@ -32,7 +32,7 @@ int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb, uv_after_
     req->type = UV_WORK;
     req->work_cb = work_cb;
 
-    rv = uv_insert_handle(loop->loopFSM->user_data, (uv_handle_t*)req);
+    rv = uv_insert_handle(loop->loop, (uv_handle_t*)req);
     if(rv != 0){
         ESP_LOGE("uv_queue_work", "Error during uv_insert in uv_queue_work");
         return 1;

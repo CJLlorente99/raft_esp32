@@ -55,8 +55,10 @@ run_handlers (fsm_t* this){
     uv_update_time(p_this);
     p_this->last_n_active_handlers = p_this->n_active_handlers;
     for(int i = 0; i < p_this->last_n_active_handlers; i++){
-        uv_update_time(p_this);
-        handle_run(p_this->active_handlers[i]);
+        if(p_this->active_handlers[i]->active){
+            uv_update_time(p_this);
+            handle_run(p_this->active_handlers[i]);
+        }
         p_this->n_handlers_run++;
     }
 }
@@ -107,9 +109,10 @@ uv_loop_init (uv_loop_t* loop){
     newLoopFSM->signal_isr_activated = 0;
     newLoopFSM->time = begin;
 
-    loop->loopFSM = fsm_new_loopFSM (newLoopFSM);
+    loop->fsm = fsm_new_loopFSM (newLoopFSM);
+    loop->loop = loop->fsm->user_data;
 
-    if(!loop->loopFSM){
+    if(!loop->fsm){
         ESP_LOGE("LOOP_INIT", "Error during fsm creation");
         return 1;
     }
@@ -118,7 +121,7 @@ uv_loop_init (uv_loop_t* loop){
 
 int
 uv_loop_close (uv_loop_t* loop){
-    loopFSM_t* this = loop->loopFSM->user_data;
+    loopFSM_t* this = loop->loop;
     this->loop_is_closing = 1;
 
     free(this);
@@ -128,7 +131,7 @@ uv_loop_close (uv_loop_t* loop){
 
 uint32_t
 uv_now(const uv_loop_t* loop){
-    loopFSM_t* this = loop->loopFSM->user_data;
+    loopFSM_t* this = loop->loop;
     return this->time;
 }
 
@@ -137,11 +140,11 @@ uv_run (uv_loop_t* loop, uv_run_mode mode){ // uv_run_mode is not neccesary as o
     portTickType xLastTime = xTaskGetTickCount();
     const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
     ESP_LOGI("uv_run", "Entering uv_run");
-    ((loopFSM_t*)loop->loopFSM->user_data)->loop_is_starting = 1;
+    loop->loop->loop_is_starting = 1;
     while(true){
         // xLastTime = xTaskGetTickCount();
         
-        fsm_fire(loop->loopFSM);
+        fsm_fire(loop->fsm);
 
         /* Configure timer wakeup for light sleep (does not reset anything) */
         // esp_sleep_enable_timer_wakeup(1000*pdTICKS_TO_MS(xLastTime + pdMS_TO_TICKS(LOOP_RATE_MS) - xTaskGetTickCount()));
@@ -170,6 +173,7 @@ handle_run(uv_handle_t* handle){
     handle->vtbl->run(handle);
 }
 
+// Como función de la vtbl?
 void
 uv_close(uv_handle_t* handle, uv_close_cb close_cb){
     int rv = 0;
@@ -184,9 +188,10 @@ uv_close(uv_handle_t* handle, uv_close_cb close_cb){
         handle->data = ((uv_signal_t*)handle)->data;
     }
 
-    close_cb(handle);
+    if(close_cb)
+        close_cb(handle);
 
-    rv = uv_remove_handle(handle->loop->loopFSM->user_data, handle);
+    rv = uv_remove_handle(handle->loop->loop, handle);
     if(rv != 0){
         ESP_LOGE("UV_CLOSE", "Error when calling uv_remove_handle in uv_close");
     }

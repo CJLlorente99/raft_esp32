@@ -18,10 +18,6 @@ static handle_vtbl_t fs_handle_vtbl = {
     .run = run_fs_handle
 };
 
-// Seguramente uv_file debe de convertirse en un FIL
-// In every call to these functions loop and cb are both set to NULL
-// If offset is uint64, FF_FS_EXFAT is needed to be set to 1
-
 int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 {
     FRESULT rv;
@@ -29,7 +25,7 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
     loopFSM_t* loopFSM;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -61,7 +57,7 @@ FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int m
     loopFSM_t* loopFSM;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -92,7 +88,7 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
     UINT bw;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -137,7 +133,7 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     strcpy(req->path, path); 
     
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -222,7 +218,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     FIL fp;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -259,7 +255,7 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* ne
     loopFSM_t* loopFSM;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -288,7 +284,7 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
     loopFSM_t* loopFSM;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -318,7 +314,7 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset,
     loopFSM_t* loopFSM;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -355,7 +351,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     loopFSM_t* loopFSM;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;
@@ -390,7 +386,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[
     uint32_t br;
 
     if(loop && cb){
-        loopFSM = loop->loopFSM->user_data;
+        loopFSM = loop->loop;
         req->loop = loop;
         req->req.vtbl = &fs_handle_vtbl;
         req->cb = cb;

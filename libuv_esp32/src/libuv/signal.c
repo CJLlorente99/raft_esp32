@@ -24,6 +24,7 @@ uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){
     handle->self.vtbl = &signal_vtbl;
     handle->self.remove = 0;
 
+    handle->data = NULL;
     handle->intr_bit = 0;
     handle->loop = loop;
     handle->signal_cb = NULL;
@@ -35,7 +36,7 @@ uv_signal_init (uv_loop_t* loop, uv_signal_t* handle){
 
 int
 uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
-    loopFSM_t* loop = handle->loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loop;
     int rv = 0;
     esp_err_t err;
 
@@ -55,6 +56,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 
     handle->signal_cb = signal_cb;
     handle->signum = signum;
+    handle->self.active = 1;
 
     /* Init interrupt for given signum */
 
@@ -96,7 +98,7 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 
 int
 uv_signal_stop(uv_signal_t* handle){
-    loopFSM_t* loop = handle->loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loop;
     int rv;
     esp_err_t err;
 
@@ -112,11 +114,7 @@ uv_signal_stop(uv_signal_t* handle){
         return 1;
     }
 
-    rv = uv_remove_handle(loop, (uv_handle_t*)handle);
-    if(rv != 0){
-        ESP_LOGE("UV_SIGNAL_STOP", "Error when calling uv_remove_handle in uv_signal_stop");
-        return 1;
-    }
+    handle->self.active = 0;
 
     return 0;
 }

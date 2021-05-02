@@ -315,6 +315,7 @@ timer_cb(uv_timer_t* handle){
     }
 
     uv_timer_stop(handle);
+    uv_close(handle, NULL);
 }
 
 void
@@ -553,7 +554,7 @@ newFile2Dir1 (uv_signal_t* handle, int signum){
 void
 info(uv_signal_t* handle, int signum){
     int rv;
-    int n;
+    int n = 0;;
     FIL file;
     uv_fs_t req;
     uv_dirent_t ent;
@@ -700,7 +701,7 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // Init WiFi with static IP
-    wifi_init(SERVERIP);
+    wifi_init(LOCALIP);
 
     // Mount FAT-VFS
     ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
@@ -728,8 +729,8 @@ void app_main(void)
 
     // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
+    xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
-    xTaskCreate(main_raft, "startup", 32768, NULL, 5, NULL);
+    // xTaskCreate(main_raft, "startup", 32768, NULL, 5, NULL);
 
 }

@@ -22,6 +22,10 @@ uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle){
         for(int i = 0; i < stream->nreqs; i++){
             stream->reqs[i]->remove = 1;
         }
+        if(handle->type == UV_TCP)
+            free((uv_tcp_t*)handle);
+        else if(handle->type == UV_STREAM)
+            free((uv_stream_t*)handle);
     }
 
     handle->remove = 1;
@@ -32,4 +36,16 @@ uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle){
 void
 add_req_to_stream(uv_stream_t* stream, uv_handle_t* req){
     stream->reqs[stream->nreqs++] = req;
+}
+
+void
+remove_req_from_stream(uv_stream_t* stream, uv_handle_t* req){
+    int j = 0;
+    for(int i = 0; i < stream->nreqs; i++){
+        if(stream->reqs[i] != req){
+            stream->reqs[j++] = stream->reqs[i];
+        }
+    }
+
+    stream->nreqs = j;
 }

@@ -4,7 +4,7 @@
 void
 run_timer(uv_handle_t* handle){
     uv_timer_t* timer = (uv_timer_t*) handle;
-    loopFSM_t* loop = timer->loop->loopFSM->user_data;
+    loopFSM_t* loop = timer->loop->loop;
     int rv;
 
     if(timer->timeout > loop->time)
@@ -31,6 +31,7 @@ uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
     handle->self.vtbl = &timer_vtbl;
     handle->self.remove = 0;
 
+    handle->data = NULL;
     handle->loop = loop;
     handle->repeat = 0;
     handle->timeout = 0;
@@ -42,7 +43,7 @@ uv_timer_init (uv_loop_t* loop, uv_timer_t* handle){
 
 int
 uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat){
-    loopFSM_t* loop = handle->loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loop;
     int rv;
     uint32_t clamped_timeout;
 
@@ -67,14 +68,10 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
 
 int
 uv_timer_stop(uv_timer_t* handle){
-    loopFSM_t* loop = handle->loop->loopFSM->user_data;
+    loopFSM_t* loop = handle->loop->loop;
     int rv;
 
-    rv = uv_remove_handle(loop, (uv_handle_t*)handle);
-    if(rv != 0){
-        ESP_LOGE("UV_TIMER_STOP", "Error when calling uv_remove_handles in uv_timer_stop");
-        return 1;
-    }
+    handle->self.active = 0;
     
     return 0;
 }
@@ -87,6 +84,7 @@ uv_timer_again(uv_timer_t* handle){
         /* Save previous values before uv_timer_stop frees handle */
         uv_timer_cb timer_cb = handle->timer_cb;
         uint32_t repeat = handle->repeat;
+        void* data = handle->data;
 
         rv = uv_timer_stop(handle);
         if(rv != 0){
@@ -94,13 +92,17 @@ uv_timer_again(uv_timer_t* handle){
             return 1;
         }
 
-        uv_timer_t* new_handle = malloc(sizeof(uv_timer_t)); // could handle be reused even if it has been freed
+        uv_close(handle, NULL);
+
+        uv_timer_t* new_handle = malloc(sizeof(uv_timer_t));
 
         rv = uv_timer_init(handle->loop, new_handle);
         if(rv != 0){
             ESP_LOGE("UV_TIMER_AGAIN", "Error when calling uv_timer_init in uv_timer_again");
             return 1;
         }
+
+        new_handle->data = data;
 
         rv = uv_timer_start(new_handle, timer_cb, repeat, repeat);
         if(rv != 0){

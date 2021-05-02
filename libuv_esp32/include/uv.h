@@ -239,7 +239,6 @@ struct uv_write_s {
     /* private */
     uv_loop_t* loop;
     uv_write_cb cb;
-    int status;
     uv_buf_t* bufs;
     int nbufs;
     uv_stream_t* stream;
@@ -273,8 +272,6 @@ struct uv_read_start_s {
     uv_alloc_cb alloc_cb;
     uv_read_cb read_cb;
     uv_buf_t* buf;
-    ssize_t nread;
-    int is_alloc : 1;
 };
 
 struct uv_fs_s {
@@ -340,9 +337,6 @@ struct uv_stream_s {
     uv_loop_t* loop;
     uv_handle_type type;
     /* private */
-    uv_read_cb read_cb;
-    uv_alloc_cb alloc_cb;
-    uv_tcp_t* server;
     int socket;
     uv_handle_t* reqs[40];
     int nreqs;
@@ -357,20 +351,9 @@ struct uv_tcp_s {
     uv_loop_t* loop;
     uv_handle_type type;
     /* private */
-    uv_read_cb read_cb;
-    uv_alloc_cb alloc_cb;
-    uv_tcp_t* server;
     int socket;
     uv_handle_t* reqs[40];
     int nreqs;
-
-    /* tcp-only */
-    const struct sockaddr* src_sockaddr;
-    uint64_t flags;
-    uv_connection_cb connection_cb;
-    uv_close_cb close_cb;
-    uv_connect_cb connect_cb;
-    uv_write_cb write_cb;
 };
 
 struct uv_buf_s {
@@ -408,7 +391,8 @@ struct uv_loop_s {
     /* User data */
     void* data;
     /* Private */
-    fsm_t* loopFSM;
+    loopFSM_t* loop;
+    fsm_t* fsm;
 };
 
 //Fsm needed data
@@ -485,6 +469,7 @@ int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb, uv_after_
 int uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle);
 int uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle);
 void add_req_to_stream(uv_stream_t* stream, uv_handle_t* req);
+void remove_req_from_stream(uv_stream_t* stream, uv_handle_t* req);
 
 // Miscelaneous function prototypes
 
