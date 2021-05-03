@@ -184,7 +184,6 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
 
     rv = f_findnext(&req->dp, &fno);
     if(rv == FR_INVALID_OBJECT){
-        ESP_LOGI("UV_FS_SCANDIR_NEXT", "f_findfirst");
         rv = f_findfirst(&req->dp, &fno, req->path, "*");
         if(rv != FR_OK){
             ESP_LOGE("UV_FS_SCANDIR_NEXT", "Error during f_findfirst in uv_fs_scandir. Code = %d", rv);
@@ -205,7 +204,7 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
     strcat(ent->name, "/");
     strcat(ent->name, fname);
     strcat(ent->name, "\0");
-
+    
     return 0;
 }
 

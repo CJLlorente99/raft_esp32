@@ -642,16 +642,12 @@ static int uvEnsureSegmentBufferIsLargeEnough(struct uvSegmentBuffer *b,
         n++;
     }
     
-    ESP_LOGI("","LLEGO");
-
     len = b->block_size * n;
     base = raft_aligned_alloc(b->block_size, len);
     if (base == NULL) {
         return RAFT_NOMEM;
     }
     memset(base, 0, len);
-
-    ESP_LOGI("","LLEGO");
 
     /* If the current arena is initialized, we need to copy its content, since
      * it might have data that we want to retain in the next write. */

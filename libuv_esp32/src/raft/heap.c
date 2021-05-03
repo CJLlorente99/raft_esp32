@@ -32,7 +32,8 @@ static void *defaultRealloc(void *data, void *ptr, size_t size)
 static void *defaultAlignedAlloc(void *data, size_t alignment, size_t size)
 {
     (void)data;
-    return heap_caps_aligned_alloc(alignment, size, MALLOC_CAP_8BIT);
+    // return heap_caps_aligned_alloc(alignment, size, MALLOC_CAP_8BIT);
+    return malloc(size);
 }
 
 static void defaultAlignedFree(void *data, size_t alignment, void *ptr)

@@ -22,10 +22,13 @@ uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle){
         for(int i = 0; i < stream->nreqs; i++){
             stream->reqs[i]->remove = 1;
         }
-        if(handle->type == UV_TCP)
+        if(handle->type == UV_TCP){
+            close(((uv_tcp_t*)handle)->socket);
             free((uv_tcp_t*)handle);
-        else if(handle->type == UV_STREAM)
+        }   else if(handle->type == UV_STREAM){
+            close(((uv_stream_t*)handle)->socket);
             free((uv_stream_t*)handle);
+        }
     }
 
     handle->remove = 1;

@@ -55,7 +55,7 @@ run_accept_handle(uv_handle_t* handle){
             return;
         }
 
-        remove_req_from_stream(handle->loop->loop, handle);
+        remove_req_from_stream(accept_handle->server, handle);
     }
 }
 
@@ -93,7 +93,7 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
     client->socket = -1;
     client->type = UV_STREAM;
 
-    add_req_to_stream(server, req);
+    add_req_to_stream(server, (uv_handle_t*)req);
 
     /* Add handle */
     rv = uv_insert_handle(server->loop->loop, (uv_handle_t*)req);
@@ -170,7 +170,7 @@ uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
     req->read_cb = read_cb;
     req->stream = stream;
 
-    add_req_to_stream(stream, req);
+    add_req_to_stream(stream, (uv_handle_t*)req);
 
     rv = uv_insert_handle(stream->loop->loop, (uv_handle_t*)req);
     if(rv != 0){
@@ -201,7 +201,7 @@ uv_read_stop(uv_stream_t* stream){
                     return 1;
                 }
 
-                remove_req_from_stream(stream->loop->loop, loop->active_handlers[i]);
+                remove_req_from_stream(stream, loop->active_handlers[i]);
                 return 0;
             } 
         }
@@ -253,7 +253,7 @@ run_write_handle(uv_handle_t* handle){
             return;
         }
 
-        remove_req_from_stream(handle->loop->loop, handle);
+        remove_req_from_stream(write_handle->stream, handle);
     }
 }
 
@@ -278,7 +278,7 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     req->stream = handle;
     req->type = UV_UNKNOWN_HANDLE;
 
-    add_req_to_stream(handle, req);
+    add_req_to_stream(handle, (uv_handle_t*)req);
 
     rv = uv_insert_handle(handle->loop->loop, (uv_handle_t*)req);
     if(rv != 0){

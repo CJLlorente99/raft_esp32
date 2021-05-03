@@ -217,24 +217,18 @@ static int ServerInit(struct Server *s,
         }
     }
 
-    ESP_LOGI("","server init finished");
     rv = raft_bootstrap(&s->raft, &configuration);
     if (rv != 0 && rv != RAFT_CANTBOOTSTRAP) {
         goto err_after_configuration_init;
     }
-    ESP_LOGI("","server init finished");
 
     raft_configuration_close(&configuration);
-
-    ESP_LOGI("","server init finished");
 
     raft_set_snapshot_threshold(&s->raft, 64);
     raft_set_snapshot_trailing(&s->raft, 16);
     raft_set_pre_vote(&s->raft, true);
 
     s->transfer.data = s;
-
-    ESP_LOGI("","server init finished");
 
     return 0;
 
@@ -307,7 +301,7 @@ static int ServerStart(struct Server *s)
 {
     int rv;
 
-    ESP_LOGI("SERVERSTART", "starting");
+    ESP_LOGI("ServerStart", "starting");
 
     rv = raft_start(&s->raft);
     if (rv != 0) {
@@ -319,6 +313,8 @@ static int ServerStart(struct Server *s)
         ESP_LOGE("ServerStart", "uv_timer_start(): %d", rv);
         goto err;
     }
+
+    ESP_LOGI("ServerStart", "started");
 
     return 0;
 
@@ -364,7 +360,7 @@ static void mainSigintCb(struct uv_signal_s *handle, int signum)
     ServerClose(server, mainServerCloseCb);
 }
 
-int main_raft()
+int main_raft(void* ignore)
 {
     struct uv_loop_s loop;
     struct uv_signal_s sigint; /* To catch SIGINT and exit. */

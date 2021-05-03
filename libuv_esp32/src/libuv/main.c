@@ -183,11 +183,11 @@ main_timer(void* ignore){
 
 // TCP test server
 
-#define LOCALIP "192.168.0.200"
-#define CLIENTIP "192.168.0.201"
+// #define LOCALIP "192.168.0.200"
+// #define CLIENTIP "192.168.0.201"
 
-// #define CLIENTIP "192.168.0.200"
-// #define LOCALIP "192.168.0.201"
+#define CLIENTIP "192.168.0.200"
+#define LOCALIP "192.168.0.201"
 
 uv_tcp_t* tcp_server;
 uv_tcp_t* tcp_client;
@@ -226,6 +226,7 @@ void connect_cb(uv_connect_t* req, int status);
 void
 resetSocketCb(uv_handle_t* handle){
     uv_loop_t* loop = handle->data;
+    tcp_client = malloc(sizeof(uv_tcp_t));
     int rv;
 
     rv = uv_tcp_init(loop, tcp_client);
@@ -270,7 +271,7 @@ connect_cb(uv_connect_t* req, int status){
     if(status != 0){
         if(errno == 104){
             tcp_client->data = req->loop;
-            uv_close(tcp_client, resetSocketCb);
+            uv_close((uv_handle_t*)tcp_client, resetSocketCb);
         }
         return;
     }
@@ -283,17 +284,15 @@ connect_cb(uv_connect_t* req, int status){
 void timer_cb(uv_timer_t* handle);
 void
 write_cb(uv_write_t* req, int status){
-    int rv;
-
+    
     free(req->bufs->base);
     free(req->bufs);
     ESP_LOGI("WRITE_CB", "Write callback has been called with status = %d", status);
 
     uv_timer_t* timer = malloc(sizeof(uv_timer_t));
-    timer->data = req->data;
-    rv = uv_timer_init(req->loop, timer);
-
-    rv = uv_timer_start(timer, timer_cb, 2000, 0);
+    uv_timer_init(req->loop, timer);
+    timer->data = req->stream;
+    uv_timer_start(timer, timer_cb, 2000, 0);
 }
 
 void
@@ -307,15 +306,14 @@ timer_cb(uv_timer_t* handle){
     strcpy(buf->base, "Saludos");
     buf->len = 4*1024;
 
-    req->data = handle->data;
     ESP_LOGI("timer_cb", "uv_write");
-    rv = uv_write(req, handle->data, buf, 1, write_cb);
+    rv = uv_write(req, tcp_server->data, buf, 1, write_cb);
     if(rv != 0){
         ESP_LOGE("timer_cb","Error while trying to write");
     }
 
     uv_timer_stop(handle);
-    uv_close(handle, NULL);
+    uv_close((uv_handle_t*)handle, NULL);
 }
 
 void
@@ -325,7 +323,6 @@ connection_cb(uv_stream_t* server, int status){
 
     // If listen has failed, try again
     if(status != 0){
-        tcp_server->data = malloc(sizeof(uv_stream_t));
 
         rv = uv_listen((uv_stream_t*)tcp_server, 1, connection_cb);
         if(rv != 0){
@@ -343,7 +340,6 @@ connection_cb(uv_stream_t* server, int status){
     uv_timer_t* timer = malloc(sizeof(uv_timer_t));
     timer->data = tcp_server->data;
     rv = uv_timer_init(server->loop, timer);
-
     rv = uv_timer_start(timer, timer_cb, 2000, 0);
 }
 
@@ -405,6 +401,7 @@ main_tcp(void* ignore){
 
     // // Init server side
     tcp_server = malloc(sizeof(uv_tcp_t));
+    tcp_server->data = malloc(sizeof(uv_stream_t));
 
     rv = uv_tcp_init(loop, tcp_server);
     if(rv != 0){
@@ -424,8 +421,6 @@ main_tcp(void* ignore){
     }
 
     ESP_LOGI("TCP_BIND", "uv_tcp_bind success");
-
-    tcp_server->data = malloc(sizeof(uv_stream_t));
 
     rv = uv_listen((uv_stream_t*)tcp_server, 1, connection_cb);
     if(rv != 0){
@@ -460,7 +455,6 @@ newFileDir1 (uv_signal_t* handle, int signum){
     int rv;
     FIL file;
     // FILE* file2;
-    FRESULT fr;
     uv_fs_t req;
     const char* path = "dir1/example.txt";
     
@@ -497,7 +491,6 @@ void
 newFile2Dir1 (uv_signal_t* handle, int signum){
     int rv;
     FIL file;
-    FRESULT fr;
     uv_fs_t req;
     const char* path = "dir1/example2.txt";
     
