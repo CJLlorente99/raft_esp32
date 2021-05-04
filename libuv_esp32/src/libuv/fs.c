@@ -214,7 +214,6 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     FRESULT rv;
     int rv2;
     loopFSM_t* loopFSM;
-    FIL fp;
 
     if(loop && cb){
         loopFSM = loop->loop;
@@ -238,7 +237,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
     }
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_STAT", "Error during f_stat in uv_fs_stat code %d",rv);
-        return;
+        return 1;
     }
 
     req->statbuf.st_mode = fno.fattrib;

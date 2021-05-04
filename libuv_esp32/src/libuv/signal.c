@@ -98,8 +98,6 @@ uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 
 int
 uv_signal_stop(uv_signal_t* handle){
-    loopFSM_t* loop = handle->loop->loop;
-    int rv;
     esp_err_t err;
 
     err = gpio_intr_disable(handle->signum);

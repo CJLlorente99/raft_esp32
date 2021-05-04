@@ -68,8 +68,6 @@ uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t re
 
 int
 uv_timer_stop(uv_timer_t* handle){
-    loopFSM_t* loop = handle->loop->loop;
-    int rv;
 
     handle->self.active = 0;
     
@@ -92,7 +90,7 @@ uv_timer_again(uv_timer_t* handle){
             return 1;
         }
 
-        uv_close(handle, NULL);
+        uv_close((uv_handle_t*)handle, NULL);
 
         uv_timer_t* new_handle = malloc(sizeof(uv_timer_t));
 

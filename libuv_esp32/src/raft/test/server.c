@@ -10,7 +10,6 @@ static int FsmApply(struct raft_fsm *fsm,
                     const struct raft_buffer *buf,
                     void **result)
 {
-    int rv;
     struct fsm_t *f = fsm->data;
     if (buf->len != sizeof(TreeFSM)) {
         return RAFT_MALFORMED;
@@ -27,7 +26,6 @@ static int FsmSnapshot(struct raft_fsm *fsm,
                        struct raft_buffer *bufs[],
                        unsigned *n_bufs)
 {   
-    int rv;
     struct fsm_t *f = fsm->data;
     *n_bufs = 1;
     *bufs = raft_malloc(sizeof **bufs);
@@ -47,7 +45,6 @@ static int FsmSnapshot(struct raft_fsm *fsm,
 // Restaura la máquina de estados a partir del último snapshot
 static int FsmRestore(struct raft_fsm *fsm, struct raft_buffer *buf)
 {
-    int rv;
     struct fsm_t *f = fsm->data;
     if (buf->len != sizeof(TreeFSM)) {
         return RAFT_MALFORMED;
@@ -145,7 +142,6 @@ static int ServerInit(struct Server *s,
                       unsigned id)
 {
     struct raft_configuration configuration;
-    struct timespec now;
     unsigned i;
     int rv;
 
@@ -360,7 +356,7 @@ static void mainSigintCb(struct uv_signal_s *handle, int signum)
     ServerClose(server, mainServerCloseCb);
 }
 
-int main_raft(void* ignore)
+void main_raft(void* ignore)
 {
     struct uv_loop_s loop;
     struct uv_signal_s sigint; /* To catch SIGINT and exit. */
@@ -413,7 +409,7 @@ int main_raft(void* ignore)
 
     uv_loop_close(&loop);
 
-    return rv;
+    return;
 
 err_after_signal_init:
     uv_close((struct uv_handle_s *)&sigint, NULL);
@@ -422,5 +418,5 @@ err_after_server_init:
     uv_run(&loop, UV_RUN_DEFAULT);
     uv_loop_close(&loop);
 err:
-    return rv;
+    return;
 }

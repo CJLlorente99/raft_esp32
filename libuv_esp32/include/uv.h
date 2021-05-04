@@ -476,6 +476,6 @@ void remove_req_from_stream(uv_stream_t* stream, uv_handle_t* req);
 int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
 
 // Main raft
-int main_raft();
+void main_raft(void* ignore);
 
 #endif /* UV_H */
