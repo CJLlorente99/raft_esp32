@@ -8,6 +8,8 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
     // backlog indicates number of connection to be queued (only backlog = 1 is used in raft)
     int rv;
 
+    ESP_LOGI("listen","");
+
     rv = listen(stream->socket, 1);
     if(rv != 0){
         ESP_LOGE("run_listen_handle", "Error durign listen in run_listen_handle: errno %d", errno);
@@ -93,6 +95,8 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
     client->socket = -1;
     client->type = UV_STREAM;
 
+    ESP_LOGI("uv_accept","");
+
     add_req_to_stream(server, (uv_handle_t*)req);
 
     /* Add handle */
@@ -152,6 +156,8 @@ int
 uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
     int rv;
     
+    ESP_LOGI("read_start","");
+
     uv_read_start_t* req = malloc(sizeof(uv_read_start_t));
     if(!req){
         ESP_LOGE("UV_READ_START", "Error during malloc in uv_read_start");
@@ -189,6 +195,8 @@ int
 uv_read_stop(uv_stream_t* stream){
     int rv;
     loopFSM_t* loop = stream->loop->loop;
+
+    ESP_LOGI("read_stop","");
 
     /* Stop the correspoding read_start_request */
     for(int i = 0; i < loop->n_active_handlers; i++){
@@ -264,6 +272,8 @@ static handle_vtbl_t write_handle_vtbl = {
 int
 uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb){
     int rv;
+
+    ESP_LOGI("write","");
 
     req->req.loop = handle->loop;
     req->req.type = UV_UNKNOWN_HANDLE;

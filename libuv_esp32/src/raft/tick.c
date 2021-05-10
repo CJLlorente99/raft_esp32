@@ -7,6 +7,7 @@
 #include "progress.h"
 #include "replication.h"
 #include "tracing.h"
+#include "esp_log.h"
 
 /* Set to 1 to enable tracing. */
 #if 0
@@ -31,6 +32,8 @@ static int tickFollower(struct raft *r)
     if (server == NULL) {
         return 0;
     }
+
+    ESP_LOGI("tickFollower","");
 
     /* Check if we need to start an election.
      *

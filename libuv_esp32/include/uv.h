@@ -25,13 +25,17 @@
 // RAFT
 
 #define SERVERIP "192.168.0.201"
+#define ID 1
 // #define SERVERIP "192.168.0.202"
+// #define ID 2
 // #define SERVERIP "192.168.0.203"
+// #define ID 3
+
 
 /// Some global constants
 
 #define SIGNAL_TASK_PRIORITY 4
-#define LOOP_RATE_MS 100
+#define LOOP_RATE_MS 10
 
 // fs flags
 
@@ -370,8 +374,8 @@ struct uv_timer_s {
     uv_handle_type type;
     /* private */
     uv_timer_cb timer_cb;
-    uint32_t timeout;
-    uint32_t repeat;
+    uint64_t timeout;
+    uint64_t repeat;
 };
 
 struct uv_signal_s {

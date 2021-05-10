@@ -7,6 +7,7 @@ static void
 run_signal(uv_handle_t* handle){
     uv_signal_t* signal = (uv_signal_t*) handle;
     if(signal->intr_bit){
+        handle->data = signal->data;
         signal->signal_cb(signal, signal->signum);
         signal->intr_bit = 0;
     }

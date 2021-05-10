@@ -56,7 +56,6 @@ run_handlers (fsm_t* this){
     p_this->last_n_active_handlers = p_this->n_active_handlers;
     for(int i = 0; i < p_this->last_n_active_handlers; i++){
         if(p_this->active_handlers[i]->active){
-            uv_update_time(p_this);
             handle_run(p_this->active_handlers[i]);
         }
         p_this->n_handlers_run++;
@@ -69,8 +68,10 @@ close_loop (fsm_t* this){
     p_this->loop_is_closing = 0;
     p_this->last_n_active_handlers = p_this->n_active_handlers;
     for(int i = 0; i < p_this->last_n_active_handlers; i++){
-        uv_remove_handle(this->user_data, p_this->active_handlers[i]);
+        free(p_this->active_handlers[i]);
     }
+    free(p_this);
+    free(this);
 }
 
 /* FSM init */
@@ -123,8 +124,8 @@ int
 uv_loop_close (uv_loop_t* loop){
     loopFSM_t* this = loop->loop;
     this->loop_is_closing = 1;
-
-    free(this);
+    
+    free(loop);
 
     return 0;
 }

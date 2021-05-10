@@ -362,6 +362,7 @@ static int uvLoadSnapshotAndEntries(struct uv *uv,
          * last snapshot and there were open segments, but the entries in the
          * open segments turned out to be behind the snapshot as well.  */
         last_index = *start_index + *n - 1;
+        ESP_LOGI("uvLoadSnapshotAndEntries", "last index %llu snapshot index %llu", last_index, (*snapshot)->index);
         if (*snapshot != NULL && last_index < (*snapshot)->index) {
             ErrMsgPrintf(uv->io->errmsg,
                          "last entry on disk has index %llu, which is behind "

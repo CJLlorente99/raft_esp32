@@ -694,7 +694,7 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // Init WiFi with static IP
-    wifi_init(LOCALIP);
+    wifi_init(SERVERIP);
 
     // Mount FAT-VFS
     ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");

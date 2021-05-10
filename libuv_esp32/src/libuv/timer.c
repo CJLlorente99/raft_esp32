@@ -7,9 +7,10 @@ run_timer(uv_handle_t* handle){
     loopFSM_t* loop = timer->loop->loop;
     int rv;
 
-    if(timer->timeout > loop->time)
+    if(timer->timeout > (uint64_t)loop->time)
         return;
 
+    handle->data = timer->data;
     timer->timer_cb(timer);
 
     rv = uv_timer_again(timer);
@@ -45,17 +46,17 @@ int
 uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat){
     loopFSM_t* loop = handle->loop->loop;
     int rv;
-    uint32_t clamped_timeout;
+    uint64_t clamped_timeout;
 
-    clamped_timeout = loop->time + (uint32_t)timeout;
+    clamped_timeout = (uint64_t)loop->time + timeout;
     if(clamped_timeout < timeout){
-        clamped_timeout = (uint32_t) -1;
+        clamped_timeout = (uint64_t) -1;
     }
 
     handle->self.active = 1;
     handle->timer_cb = cb;
     handle->timeout = clamped_timeout;
-    handle->repeat = (uint32_t)repeat;
+    handle->repeat = repeat;
 
     rv = uv_insert_handle(loop, (uv_handle_t*)handle);
     if(rv != 0){
@@ -76,38 +77,14 @@ uv_timer_stop(uv_timer_t* handle){
 
 int
 uv_timer_again(uv_timer_t* handle){
-    int rv;
-
+    
     if(handle->repeat){
-        /* Save previous values before uv_timer_stop frees handle */
-        uv_timer_cb timer_cb = handle->timer_cb;
-        uint32_t repeat = handle->repeat;
-        void* data = handle->data;
-
-        rv = uv_timer_stop(handle);
-        if(rv != 0){
-            ESP_LOGE("UV_TIMER_AGAIN", "Error when calling uv_timer_stop in uv_timer_again");
-            return 1;
+        uint64_t clamped_timeout = (uint64_t)handle->loop->loop->time + handle->repeat;
+        if(clamped_timeout < handle->timeout){
+            clamped_timeout = (uint64_t) -1;
         }
 
-        uv_close((uv_handle_t*)handle, NULL);
-
-        uv_timer_t* new_handle = malloc(sizeof(uv_timer_t));
-
-        rv = uv_timer_init(handle->loop, new_handle);
-        if(rv != 0){
-            ESP_LOGE("UV_TIMER_AGAIN", "Error when calling uv_timer_init in uv_timer_again");
-            return 1;
-        }
-
-        new_handle->data = data;
-
-        rv = uv_timer_start(new_handle, timer_cb, repeat, repeat);
-        if(rv != 0){
-            ESP_LOGE("UV_TIMER_AGAIN", "Error when calling uv_timer_start in uv_timer_again");
-            return 1;
-        }
+        handle->timeout = clamped_timeout;
     }
-
     return 0;
 }

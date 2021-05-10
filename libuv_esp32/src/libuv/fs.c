@@ -97,7 +97,7 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
         if (rv2 != 0)
         {
             ESP_LOGE("UV_FS_OPEN", "Error during uv_insert in uv_fs_open");
-            return 1;
+            return 0;
         }
     }
 
@@ -105,14 +105,11 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
         rv = f_write(&file, (BYTE*)bufs[i].base, bufs[i].len, &bw);
         if (rv != FR_OK || (bw != (bufs[i].len))){
             ESP_LOGE("UV_FS_WRITE", "Error in f_write uv_fs_write. Code = %d, bw = %u", rv, bw);
-            return 1;
+            return 0;
         }
     }
 
-    rv = f_sync(&file);
-    if(rv != FR_OK){
-        ESP_LOGE("UV_FS_WRITE", "Error in f_sync in uv_fs_write. Code = %d",rv);
-    }
+    ESP_LOGI("uv_fs_write", "size %d", f_size(&file));
 
     return bw;
 }
@@ -200,9 +197,7 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
         return EOF;
     }
 
-    strcpy(ent->name, req->path);
-    strcat(ent->name, "/");
-    strcat(ent->name, fname);
+    strcpy(ent->name, fname);
     strcat(ent->name, "\0");
     
     return 0;

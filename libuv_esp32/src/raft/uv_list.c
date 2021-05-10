@@ -91,6 +91,7 @@ int UvList(struct uv *uv,
         /* Append to the segment list if it's a segment filename */
         rv = uvSegmentInfoAppendIfMatch(entry.name, segments, n_segments,
                                         &appended);
+        ESP_LOGI("uvList", "n_segments %u", *n_segments);
         if (appended || rv != 0) {
             if (rv == 0) {
                 tracef("segment %s", filename);

@@ -304,6 +304,7 @@ static int ServerStart(struct Server *s)
         ESP_LOGE("ServerStart", "raft_start(): %s", raft_errmsg(&s->raft));
         goto err;
     }
+    
     rv = uv_timer_start(&s->timer, serverTimerCb, 0, 125);
     if (rv != 0) {
         ESP_LOGE("ServerStart", "uv_timer_start(): %d", rv);
@@ -367,7 +368,7 @@ void main_raft(void* ignore)
 
     dir = "DIR1";
     f_mkdir(dir);
-    id = 1;
+    id = ID;
 
     /* Initialize the libuv loop. */
     rv = uv_loop_init(&loop);

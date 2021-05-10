@@ -169,6 +169,7 @@ static int uvReadSegmentFile(struct uv *uv,
         ErrMsgTransfer(errmsg, uv->io->errmsg, "read file");
         return RAFT_IOERR;
     }
+    ESP_LOGI("uvReadSegmentFile", "len %d cont %s", buf->len, (char*)buf->base);
     if (buf->len < 8) {
         ErrMsgPrintf(uv->io->errmsg, "file has only %zu bytes", buf->len);
         HeapFree(buf->base);
@@ -497,6 +498,7 @@ static int uvLoadOpenSegment(struct uv *uv,
         goto err;
     }
 
+    ESP_LOGI("uvLoadOpenSegment", "empty %d", empty);
     if (empty) {
         /* Empty segment, let's discard it. */
         tracef("remove empty open segment %s", info->filename);
@@ -515,6 +517,7 @@ static int uvLoadOpenSegment(struct uv *uv,
     if (format != UV__DISK_FORMAT) {
         if (format == 0) {
             all_zeros = uvContentHasOnlyTrailingZeros(&buf, offset);
+            ESP_LOGI("uvLoadOpenSegment", "all zeros %d", all_zeros);
             if (all_zeros) {
                 /* This is equivalent to the empty case, let's remove the
                  * segment. */
@@ -569,6 +572,8 @@ static int uvLoadOpenSegment(struct uv *uv,
         n_batches++;
         *next_index += tmp_n_entries;
     }
+
+    ESP_LOGI("uvLoadOpenSegment", "n_batches %d", n_batches);
 
     if (n_batches == 0) {
         HeapFree(buf.base);
@@ -928,6 +933,7 @@ static int uvWriteClosedSegment(struct uv *uv,
 
     data.base = buf.arena.base;
     data.len = buf.n;
+    ESP_LOGI("uvWriteClosedSegment", "data.len %d filename %s", data.len, filename);
     rv = UvFsMakeFile(uv->dir, filename, &data, 1, errmsg);
     uvSegmentBufferClose(&buf);
     if (rv != 0) {

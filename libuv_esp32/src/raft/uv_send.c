@@ -412,6 +412,8 @@ static int uvGetClient(struct uv *uv,
     queue *head;
     int rv;
 
+    ESP_LOGI("uvGetClient","");
+
     /* Check if we already have a client object for this peer server. */
     QUEUE_FOREACH(head, &uv->clients)
     {

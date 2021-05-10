@@ -33,6 +33,7 @@ int
 uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
     int rv;
 
+    ESP_LOGI("bind","");
     rv = bind(handle->socket, addr, sizeof(struct sockaddr));
     if(rv != 0){
         ESP_LOGE("run_bind_handle", "Socket unable to bind in run_bind_handle: errno %d", errno);
@@ -49,6 +50,8 @@ void
 run_connect_handle(uv_handle_t* handle){
     int rv;
     uv_connect_t* connect_handle = (uv_connect_t*)handle;
+
+    ESP_LOGI("run_connect_handle","");
 
     rv = connect(connect_handle->tcp->socket, &connect_handle->dest_sockaddr, sizeof(struct sockaddr));
     connect_handle->status = rv;
@@ -90,6 +93,8 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     req->status = 0;
     req->tcp = handle;
     req->type = UV_CONNECT;
+
+    ESP_LOGI("connect","");
 
     add_req_to_stream((uv_stream_t*)handle, (uv_handle_t*)req);
 

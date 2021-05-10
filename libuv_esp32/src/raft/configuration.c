@@ -2,6 +2,7 @@
 
 #include "assert.h"
 #include "byte.h"
+#include "esp_log.h"
 
 /* Current encoding format version. */
 #define ENCODING_FORMAT 1

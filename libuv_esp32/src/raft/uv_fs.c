@@ -92,12 +92,14 @@ int UvFsFileSize(const char *dir,
     int rv;
 
     UvOsJoin(dir, filename, path);
+    ESP_LOGI("UvFsFileSize", "%s", path);
 
     rv = UvOsStat(path, &sb);
     if (rv != 0) {
         UvOsErrMsg(errmsg, "stat", rv);
         return RAFT_IOERR;
     }
+    ESP_LOGI("UvFsFileSize", "%u", sb.st_size);
     *size = (off_t)sb.st_size;
 
     return 0;
@@ -217,6 +219,7 @@ static int uvFsWriteFile(const char *dir,
         goto err;
     }
     rv = UvOsWrite(fd, (const uv_buf_t *)bufs, n_bufs, 0);
+    ESP_LOGI("uvFsWriteFile", "bytes written %d size %d", rv, size);
     if (rv != (int)(size)) {
         if (rv < 0) {
             UvOsErrMsg(errmsg, "write", rv);
@@ -225,16 +228,19 @@ static int uvFsWriteFile(const char *dir,
         }
         goto err_after_file_open;
     }
+
     rv = UvOsFsync(fd);
     if (rv != 0) {
         UvOsErrMsg(errmsg, "fsync", rv);
         goto err_after_file_open;
     }
+
     rv = UvOsClose(fd);
     if (rv != 0) {
         UvOsErrMsg(errmsg, "close", rv);
         goto err;
     }
+    
     return 0;
 
 err_after_file_open:
