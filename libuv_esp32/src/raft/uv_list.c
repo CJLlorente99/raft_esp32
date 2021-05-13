@@ -67,6 +67,8 @@ int UvList(struct uv *uv,
 
         filename = entry.name;
 
+        ESP_LOGI("ServerStart", "filename %s", filename);
+
         /* If an error occurred while processing a preceeding entry or if we
          * know that this is not a segment filename, just free it and skip to
          * the next one. */

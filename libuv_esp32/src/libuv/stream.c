@@ -10,7 +10,7 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
 
     ESP_LOGI("listen","");
 
-    rv = listen(stream->socket, 1);
+    rv = listen(stream->socket, backlog);
     if(rv != 0){
         ESP_LOGE("run_listen_handle", "Error durign listen in run_listen_handle: errno %d", errno);
     }
@@ -289,7 +289,8 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     req->type = UV_UNKNOWN_HANDLE;
 
     add_req_to_stream(handle, (uv_handle_t*)req);
-
+    
+    ESP_LOGI("uv_tcp_connect", "n_handles %d", handle->loop->loop->n_active_handlers);
     rv = uv_insert_handle(handle->loop->loop, (uv_handle_t*)req);
     if(rv != 0){
         ESP_LOGE("uv_write","Error during uv_insert in uv_write");

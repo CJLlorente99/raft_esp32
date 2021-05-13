@@ -92,14 +92,11 @@ int UvFsFileSize(const char *dir,
     int rv;
 
     UvOsJoin(dir, filename, path);
-    ESP_LOGI("UvFsFileSize", "%s", path);
-
     rv = UvOsStat(path, &sb);
     if (rv != 0) {
         UvOsErrMsg(errmsg, "stat", rv);
         return RAFT_IOERR;
     }
-    ESP_LOGI("UvFsFileSize", "%u", sb.st_size);
     *size = (off_t)sb.st_size;
 
     return 0;
@@ -146,7 +143,7 @@ int UvFsOpenFileForReading(const char *dir,
                            char *errmsg)
 {
     char path[UV__PATH_SZ];
-    int flags = O_RDONLY;
+    int flags = UV_FS_O_RDONLY;
 
     UvOsJoin(dir, filename, path);
 
@@ -160,7 +157,7 @@ int UvFsAllocateFile(const char *dir,
                      char *errmsg)
 {
     char path[UV__PATH_SZ];
-    int flags = O_WRONLY | O_CREAT | O_EXCL; /* Common open flags */
+    int flags = UV_FS_O_WRONLY | UV_FS_O_CREAT | FA_CREATE_NEW; /* Common open flags */
     int rv = 0;
 
     UvOsJoin(dir, filename, path);
@@ -218,7 +215,7 @@ static int uvFsWriteFile(const char *dir,
     if (rv != 0) {
         goto err;
     }
-    rv = UvOsWrite(fd, (const uv_buf_t *)bufs, n_bufs, 0);
+    rv = UvOsWrite(&fd, (const uv_buf_t *)bufs, n_bufs, 0);
     ESP_LOGI("uvFsWriteFile", "bytes written %d size %d", rv, size);
     if (rv != (int)(size)) {
         if (rv < 0) {
@@ -285,7 +282,7 @@ open:
         goto err;
     }
 
-    rv = UvOsWrite(fd, (const uv_buf_t *)buf, 1, 0);
+    rv = UvOsWrite(&fd, (const uv_buf_t *)buf, 1, 0);
     if (rv != (int)(buf->len)) {
         if (rv < 0) {
             UvOsErrMsg(errmsg, "write", rv);
@@ -372,7 +369,7 @@ int UvFsReadFile(const char *dir,
         goto err;
     }
 
-    rv = uvFsOpenFile(dir, filename, O_RDONLY, 0, &fd, errmsg);
+    rv = uvFsOpenFile(dir, filename, UV_FS_O_RDONLY, 0, &fd, errmsg);
     if (rv != 0) {
         goto err;
     }
@@ -413,7 +410,7 @@ int UvFsReadFileInto(const char *dir,
 
     UvOsJoin(dir, filename, path);
 
-    rv = uvFsOpenFile(dir, filename, O_RDONLY, 0, &fd, errmsg);
+    rv = uvFsOpenFile(dir, filename, UV_FS_O_RDONLY, 0, &fd, errmsg);
     if (rv != 0) {
         goto err;
     }

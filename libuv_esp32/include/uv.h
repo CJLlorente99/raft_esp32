@@ -24,13 +24,12 @@
 
 // RAFT
 
-#define SERVERIP "192.168.0.201"
-#define ID 1
+// #define SERVERIP "192.168.0.201"
+// #define ID 1
 // #define SERVERIP "192.168.0.202"
 // #define ID 2
-// #define SERVERIP "192.168.0.203"
-// #define ID 3
-
+#define SERVERIP "192.168.0.203"
+#define ID 3
 
 /// Some global constants
 
@@ -223,7 +222,7 @@ void handle_run(uv_handle_t* handle);
 /// Types definition
 /* Various */
 struct uv_dirent_s {
-    char name[255];
+    char name[256];
     uv_dirent_type_t type;
 };
 
@@ -288,7 +287,7 @@ struct uv_fs_s {
     uv_loop_t* loop;
     uv_fs_cb cb;
     uv_stat_t statbuf;
-    char* path;
+    char path[255];
     FF_DIR dp;
 };
 
@@ -456,7 +455,7 @@ int uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsign
 // FS function protypes
 int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
 FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb);
-int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb);
+int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file* file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb);
 int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb);
 int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent);
 int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);

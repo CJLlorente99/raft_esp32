@@ -64,18 +64,15 @@ int UvOsStat(const char *path, uv_stat_t *sb)
 {
     struct uv_fs_s req;
     int rv;
-    ESP_LOGI("UvOsStat", "uv_fs_stat");
     rv = uv_fs_stat(NULL, &req, path, NULL);
     if (rv != 0) {
-        ESP_LOGI("UvOsStat", "%d", rv);
         return rv;
     }
-    ESP_LOGI("UvOsStat", "size %d", req.statbuf.st_size);
     memcpy(sb, &req.statbuf, sizeof *sb);
     return 0;
 }
 
-int UvOsWrite(uv_file fd,
+int UvOsWrite(uv_file* fd,
               const uv_buf_t bufs[],
               unsigned int nbufs,
               int64_t offset)

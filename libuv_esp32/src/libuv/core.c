@@ -8,7 +8,6 @@ uv_insert_handle(loopFSM_t* loop, uv_handle_t* handle){
     //     if(loop->active_handlers[j] == handle)
     //         return 0;
     // }
-
     loop->active_handlers[loop->n_active_handlers++] = handle;
 
     return 0;

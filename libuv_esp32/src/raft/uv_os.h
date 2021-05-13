@@ -89,7 +89,7 @@ int UvOsFdatasync(uv_file fd);
 int UvOsStat(const char *path, uv_stat_t *sb);
 
 /* Portable write() */
-int UvOsWrite(uv_file fd,
+int UvOsWrite(uv_file* fd,
               const uv_buf_t bufs[],
               unsigned int nbufs,
               int64_t offset);

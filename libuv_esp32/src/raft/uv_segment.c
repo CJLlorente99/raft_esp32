@@ -169,7 +169,6 @@ static int uvReadSegmentFile(struct uv *uv,
         ErrMsgTransfer(errmsg, uv->io->errmsg, "read file");
         return RAFT_IOERR;
     }
-    ESP_LOGI("uvReadSegmentFile", "len %d cont %s", buf->len, (char*)buf->base);
     if (buf->len < 8) {
         ErrMsgPrintf(uv->io->errmsg, "file has only %zu bytes", buf->len);
         HeapFree(buf->base);

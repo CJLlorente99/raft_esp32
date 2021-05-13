@@ -80,12 +80,13 @@ FIL uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int m
     return fp;
 }
 
-int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
+int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file* file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 {
     FRESULT rv;
     int rv2;
     loopFSM_t* loopFSM;
     UINT bw;
+    uint64_t bw_cum = 0;
 
     if(loop && cb){
         loopFSM = loop->loop;
@@ -102,16 +103,15 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs
     }
 
     for(int i = 0; i < nbufs; i++){
-        rv = f_write(&file, (BYTE*)bufs[i].base, bufs[i].len, &bw);
+        rv = f_write(file, (BYTE*)bufs[i].base, bufs[i].len, &bw);
         if (rv != FR_OK || (bw != (bufs[i].len))){
             ESP_LOGE("UV_FS_WRITE", "Error in f_write uv_fs_write. Code = %d, bw = %u", rv, bw);
             return 0;
         }
+        bw_cum += bw;
     }
-
-    ESP_LOGI("uv_fs_write", "size %d", f_size(&file));
-
-    return bw;
+    
+    return bw_cum;
 }
 
 int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb)
@@ -126,7 +126,6 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
     FF_DIR dp;
     FILINFO fno;
 
-    req->path = malloc(sizeof(path));
     strcpy(req->path, path); 
     
     if(loop && cb){
@@ -160,6 +159,8 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv
         fname = fno.fname;
     }
 
+    memset(&req->dp,0, sizeof(FF_DIR));
+
     rv = f_closedir(&dp);
     if(rv != FR_OK){
         ESP_LOGE("UV_FS_SCANDIR", "Error during f_closedir in uv_fs_scandir. Code = %d", rv);
@@ -175,7 +176,6 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
     // use f_findfirst and f_findnext to fill ent (containing the paths)
     FRESULT rv;
     FILINFO fno;
-    TCHAR* fname;
 
     ent->type = UV_DIRENT_FILE;
 
@@ -191,14 +191,11 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
         return 0;
     }  
 
-    fname = fno.fname;
-
-    if(fname[0] == NULL){
+    if(fno.fname[0] == NULL){
         return EOF;
     }
 
-    strcpy(ent->name, fname);
-    strcat(ent->name, "\0");
+    strcpy(ent->name, fno.fname);
     
     return 0;
 }
@@ -224,9 +221,9 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
         }
     }
 
-    FILINFO fno;
+    FILINFO* fno = malloc(sizeof(FILINFO));
 
-    rv = f_stat(path, &fno);
+    rv = f_stat(path, fno);
     if(rv == FR_NO_FILE){
         return UV_ENOENT;
     }
@@ -235,8 +232,10 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
         return 1;
     }
 
-    req->statbuf.st_mode = fno.fattrib;
-    req->statbuf.st_size = fno.fsize;
+    req->statbuf.st_mode = fno->fattrib;
+    req->statbuf.st_size = fno->fsize;
+
+    free(fno);
 
     return 0;
 }

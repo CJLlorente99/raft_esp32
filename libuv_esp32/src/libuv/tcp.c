@@ -97,8 +97,9 @@ uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr
     ESP_LOGI("connect","");
 
     add_req_to_stream((uv_stream_t*)handle, (uv_handle_t*)req);
-
+    
     /* Add handle */
+    ESP_LOGI("uv_tcp_connect", "n_handles %d", handle->loop->loop->n_active_handlers);
     rv = uv_insert_handle(handle->loop->loop, (uv_handle_t*)req);
     if(rv != 0){
         ESP_LOGE("uv_tcp_connect", "Error during uv_insert_request in uv_tcp_connect");
