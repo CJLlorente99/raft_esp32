@@ -273,7 +273,7 @@ int
 uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb){
     int rv;
 
-    ESP_LOGI("write","");
+    ESP_LOGI("write","%s", bufs->base);
 
     req->req.loop = handle->loop;
     req->req.type = UV_UNKNOWN_HANDLE;

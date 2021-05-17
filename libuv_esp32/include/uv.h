@@ -14,6 +14,8 @@
 #include "driver/gpio.h"
 #include "lwip/sockets.h"
 #include "lwip/err.h"
+#include "lwip/sys.h"
+#include "lwip/opt.h"
 
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
@@ -22,14 +24,14 @@
 #include "esp_sleep.h"
 #include "esp_heap_caps.h"
 
-// RAFT
+/* everything_main */
+#define SERVERIP "192.168.0.200"
+#define SERVERPORT 50000
+#define CLIENTIP "192.168.0.201"
 
-// #define SERVERIP "192.168.0.201"
-// #define ID 1
-#define SERVERIP "192.168.0.202"
-#define ID 2
-// #define SERVERIP "192.168.0.203"
-// #define ID 3
+/* tcp main */
+
+#define ID 1
 
 /// Some global constants
 

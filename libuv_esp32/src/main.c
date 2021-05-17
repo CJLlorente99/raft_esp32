@@ -10,6 +10,8 @@ void main_tcp(void* ignore);
 void main_timer(void* ignore);
 void main_signal(void* ignore);
 void main_limits(void* ignore);
+void main_everything_client(void* ignore);
+void main_everything_server(void* ignore);
 
 void app_main(void)
 {
@@ -24,7 +26,7 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // Init WiFi with static IP
-    wifi_init(SERVERIP);
+    wifi_init(CLIENTIP);
 
     // Mount FAT-VFS
     ESP_LOGI("APP_MAIN", "Mounting FAT filesystem");
@@ -56,6 +58,7 @@ void app_main(void)
     // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
-    xTaskCreate(main_raft, "startup", 65536, NULL, 5, NULL);
+    xTaskCreate(main_everything_client, "startup", 32768, NULL, 5, NULL);
+    // xTaskCreate(main_everything_server, "startup", 32768, NULL, 5, NULL);
 
 }
