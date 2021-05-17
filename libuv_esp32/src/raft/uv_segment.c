@@ -932,7 +932,6 @@ static int uvWriteClosedSegment(struct uv *uv,
 
     data.base = buf.arena.base;
     data.len = buf.n;
-    ESP_LOGI("uvWriteClosedSegment", "data.len %d filename %s", data.len, filename);
     rv = UvFsMakeFile(uv->dir, filename, &data, 1, errmsg);
     uvSegmentBufferClose(&buf);
     if (rv != 0) {

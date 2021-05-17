@@ -255,6 +255,11 @@ run_write_handle(uv_handle_t* handle){
         write_handle->req.data = write_handle->data;
         write_handle->cb(write_handle, status);
 
+        for(int i = 0; i < write_handle->nbufs; i++){
+            free(write_handle->bufs[i].base);
+            free(write_handle->bufs);
+        }
+
         rv = uv_remove_handle(write_handle->loop->loop, handle);
         if(rv != 0){
             ESP_LOGE("run_read_stop_handle", "Error during uv_remove in run_read_stop_handle");
@@ -281,7 +286,13 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
     req->req.remove = 0;
     req->req.active = 1;
 
-    req->bufs = bufs; // CARE, IF IT CALLED FROM STACK POINTER WONT WORK
+    /* It is neccesary to copy to mem because it is always called from stack */
+    req->bufs = malloc(nbufs*sizeof(uv_buf_t));
+    for(int i = 0; i < nbufs; i++){
+        req->bufs[i].len = bufs[0].len;
+        req->bufs[i].base = malloc(req->bufs[i].len);
+        memcpy(req->bufs[i].base, bufs[i].base, req->bufs[i].len);
+    }
     req->cb = cb;
     req->loop = handle->loop;
     req->nbufs = nbufs;
@@ -290,7 +301,6 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
 
     add_req_to_stream(handle, (uv_handle_t*)req);
     
-    ESP_LOGI("uv_tcp_connect", "n_handles %d", handle->loop->loop->n_active_handlers);
     rv = uv_insert_handle(handle->loop->loop, (uv_handle_t*)req);
     if(rv != 0){
         ESP_LOGE("uv_write","Error during uv_insert in uv_write");

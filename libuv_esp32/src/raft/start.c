@@ -84,13 +84,11 @@ static int restoreEntries(struct raft *r,
         }
         r->last_stored++;
         if (entry->type == RAFT_CHANGE) {
-            ESP_LOGI("restoreEntries","entry->type == RAFT_CHANGE");
             conf = entry;
             conf_index = r->last_stored;
         }
     }
     if (conf != NULL) {
-        ESP_LOGI("restoreEntries","conf != NULL");
         rv = restoreMostRecentConfiguration(r, conf, conf_index);
         if (rv != 0) {
             goto err;
@@ -153,7 +151,6 @@ int raft_start(struct raft *r)
         ErrMsgTransfer(r->io->errmsg, r->errmsg, "io");
         return rv;
     }
-    ESP_LOGI("raft_start", "start_index %llu n_entries %d", start_index, n_entries);
     assert(start_index >= 1);
 
     /* If we have a snapshot, let's restore it. */
@@ -172,7 +169,6 @@ int raft_start(struct raft *r)
     } else if (n_entries > 0) {
         /* If we don't have a snapshot and the on-disk log is not empty, then
          * the first entry must be a configuration entry. */
-        ESP_LOGI("raft_start", "n_entries>0");
         assert(start_index == 1);
         assert(entries[0].type == RAFT_CHANGE);
 

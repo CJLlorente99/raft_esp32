@@ -4,13 +4,6 @@
 // Handle of the wear levelling library instance
 static wl_handle_t s_wl_handle;
 
-/* mains declaration */
-void main_fs(void* ignore);
-void main_tcp(void* ignore);
-void main_timer(void* ignore);
-void main_signal(void* ignore);
-void main_limits(void* ignore);
-
 void app_main(void)
 {
     ESP_LOGI("APP_MAIN", "Beggining app_main");
@@ -52,10 +45,6 @@ void app_main(void)
 
     vTaskDelay(5000/portTICK_RATE_MS);
 
-    // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
     xTaskCreate(main_raft, "startup", 65536, NULL, 5, NULL);
 
 }
