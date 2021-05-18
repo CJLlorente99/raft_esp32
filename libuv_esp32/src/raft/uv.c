@@ -308,7 +308,6 @@ static int uvLoadSnapshotAndEntries(struct uv *uv,
         goto err;
     }
 
-    ESP_LOGI("ServerStart", "snapshots %d, segments %d", n_snapshots, n_segments);
 
     /* Load the most recent snapshot, if any. */
     if (snapshots != NULL) {

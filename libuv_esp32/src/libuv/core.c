@@ -23,10 +23,10 @@ uv_remove_handle(loopFSM_t* loop, uv_handle_t* handle){
         }
         if(handle->type == UV_TCP){
             close(((uv_tcp_t*)handle)->socket);
-            free((uv_tcp_t*)handle);
+            // free((uv_tcp_t*)handle);
         }   else if(handle->type == UV_STREAM){
             close(((uv_stream_t*)handle)->socket);
-            free((uv_stream_t*)handle);
+            // free((uv_stream_t*)handle);
         }
     }
 

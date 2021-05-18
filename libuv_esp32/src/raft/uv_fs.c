@@ -216,7 +216,6 @@ static int uvFsWriteFile(const char *dir,
         goto err;
     }
     rv = UvOsWrite(&fd, (const uv_buf_t *)bufs, n_bufs, 0);
-    ESP_LOGI("uvFsWriteFile", "bytes written %d size %d", rv, size);
     if (rv != (int)(size)) {
         if (rv < 0) {
             UvOsErrMsg(errmsg, "write", rv);

@@ -8,7 +8,7 @@ uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb){
     // backlog indicates number of connection to be queued (only backlog = 1 is used in raft)
     int rv;
 
-    ESP_LOGI("listen","");
+    // ESP_LOGI("listen","");
 
     rv = listen(stream->socket, backlog);
     if(rv != 0){
@@ -28,6 +28,8 @@ void
 run_accept_handle(uv_handle_t* handle){
     int rv;
     uv_accept_t* accept_handle = (uv_accept_t*)handle;
+
+    // ESP_LOGI("run_accept_handle", "entering");
 
     struct timeval tv;
     tv.tv_sec = 0;
@@ -59,6 +61,8 @@ run_accept_handle(uv_handle_t* handle){
 
         remove_req_from_stream(accept_handle->server, handle);
     }
+
+    // ESP_LOGI("run_accept_handle", "exiting");
 }
 
 static handle_vtbl_t accept_handle_vtbl = {
@@ -68,6 +72,8 @@ static handle_vtbl_t accept_handle_vtbl = {
 int
 uv_accept(uv_stream_t* server, uv_stream_t* client){
     int rv;
+
+    // ESP_LOGI("accept","");
     
     uv_accept_t* req = malloc(sizeof(uv_accept_t));
     if(!req){
@@ -95,8 +101,6 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
     client->socket = -1;
     client->type = UV_STREAM;
 
-    ESP_LOGI("uv_accept","");
-
     add_req_to_stream(server, (uv_handle_t*)req);
 
     /* Add handle */
@@ -115,6 +119,8 @@ uv_accept(uv_stream_t* server, uv_stream_t* client){
 void
 run_read_start_handle(uv_handle_t* handle){
     uv_read_start_t* read_start_handle = (uv_read_start_t*)handle;
+
+    // ESP_LOGI("run_read_start_handle", "entering");
 
     struct timeval tv;
     tv.tv_sec = 0;
@@ -138,6 +144,8 @@ run_read_start_handle(uv_handle_t* handle){
     if(select(read_start_handle->stream->socket + 1, &readset, NULL, NULL, &tv) && !read_start_handle->alloc_cb){
         // CUIDADO, raft aumenta el mismo buf.base y reduce buf.len
         ssize_t nread = read(read_start_handle->stream->socket, read_start_handle->buf->base, read_start_handle->buf->len);
+        read_start_handle->buf->base += nread;
+        read_start_handle->buf->len -= nread;
         if(nread < 0){
             ESP_LOGE("run_read_start_handle", "Error during read in run_read_start_handle: errno %d", errno);
         }
@@ -146,6 +154,8 @@ run_read_start_handle(uv_handle_t* handle){
         read_start_handle->read_cb(read_start_handle->stream, nread, read_start_handle->buf);
         // DO NOT uv_remove the read start handle (uv_read_stop is the one doing that)
     }
+
+    // ESP_LOGI("run_read_start_handle", "exiting");
 }
 
 static handle_vtbl_t read_start_handle_vtbl = {
@@ -156,7 +166,7 @@ int
 uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb){
     int rv;
     
-    ESP_LOGI("read_start","");
+    // ESP_LOGI("read_start","");
 
     uv_read_start_t* req = malloc(sizeof(uv_read_start_t));
     if(!req){
@@ -196,7 +206,7 @@ uv_read_stop(uv_stream_t* stream){
     int rv;
     loopFSM_t* loop = stream->loop->loop;
 
-    ESP_LOGI("read_stop","");
+    // ESP_LOGI("read_stop","");
 
     /* Stop the correspoding read_start_request */
     for(int i = 0; i < loop->n_active_handlers; i++){
@@ -226,6 +236,8 @@ run_write_handle(uv_handle_t* handle){
     int rv;
     uv_write_t* write_handle = (uv_write_t*)handle;
     int status;
+
+    // ESP_LOGI("run_write_handle", "entering");
 
     struct timeval tv;
     tv.tv_sec = 0;
@@ -268,6 +280,8 @@ run_write_handle(uv_handle_t* handle){
 
         remove_req_from_stream(write_handle->stream, handle);
     }
+
+    // ESP_LOGI("run_write_handle", "exiting");
 }
 
 static handle_vtbl_t write_handle_vtbl = {
@@ -278,7 +292,7 @@ int
 uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb){
     int rv;
 
-    ESP_LOGI("write","");
+    // ESP_LOGI("write","");
 
     req->req.loop = handle->loop;
     req->req.type = UV_UNKNOWN_HANDLE;
@@ -293,6 +307,7 @@ uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned i
         req->bufs[i].base = malloc(req->bufs[i].len);
         memcpy(req->bufs[i].base, bufs[i].base, req->bufs[i].len);
     }
+
     req->cb = cb;
     req->loop = handle->loop;
     req->nbufs = nbufs;

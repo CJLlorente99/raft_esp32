@@ -351,7 +351,7 @@ static void mainServerCloseCb(struct Server *server)
 static void mainSigintCb(struct uv_signal_s *handle, int signum)
 {
     struct Server *server = handle->data;
-    assert(signum == SIGINT);
+    // assert(signum == SIGINT);
     uv_signal_stop(handle);
     server->data = handle;
     ServerClose(server, mainServerCloseCb);

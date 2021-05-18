@@ -221,6 +221,7 @@ static void uvServerReadCb(uv_stream_t *stream,
      * we expected. */
     if (nread > 0) {
         size_t n = (size_t)nread;
+        ESP_LOGI("uvServerReadCb", "%d %d", n, s->buf.len);
 
         /* We shouldn't have read more data than the pending amount. */
         assert(n <= s->buf.len);

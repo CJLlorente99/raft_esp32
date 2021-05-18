@@ -41,7 +41,7 @@ run_handlers (fsm_t* this){
     int j = 0;
     for(int i = 0; i < p_this->n_active_handlers; i++){
         if(p_this->active_handlers[i]->remove){
-            free(p_this->active_handlers[i]);
+            // free(p_this->active_handlers[i]);
         } else{
             p_this->active_handlers[j++] = p_this->active_handlers[i];
         }

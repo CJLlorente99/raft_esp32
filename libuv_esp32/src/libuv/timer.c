@@ -3,6 +3,7 @@
 /* Run function, vtbl and uv_timer */
 void
 run_timer(uv_handle_t* handle){
+    // ESP_LOGI("run_timer","entering");
     uv_timer_t* timer = (uv_timer_t*) handle;
     loopFSM_t* loop = timer->loop->loop;
     int rv;
@@ -17,6 +18,8 @@ run_timer(uv_handle_t* handle){
     if(rv != 0){
         ESP_LOGE("RUN_TIMER", "Error when calling uv_timer_again in run_timer");
     }
+
+    // ESP_LOGI("run_timer","exiting");
 }
 
 static handle_vtbl_t timer_vtbl = {

@@ -33,8 +33,6 @@ static int tickFollower(struct raft *r)
         return 0;
     }
 
-    ESP_LOGI("tickFollower","");
-
     /* Check if we need to start an election.
      *
      * From Section 3.3:
