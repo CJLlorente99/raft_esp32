@@ -45,12 +45,12 @@ run_accept_handle(uv_handle_t* handle){
             ESP_LOGE("run_accept_handle", "Error during accept in run_accept_handle: errno %d", errno);
             return;
         }
-        char addr;
         struct sockaddr name;
         socklen_t len;
         getpeername(rv,&name,&len);
-        inet_ntop(AF_INET, &(((struct sockaddr_in*)&name)->sin_addr), &addr, len);
-        ESP_LOGI("RUN_TCP_ACCEPT", "accepting : %s", &addr);
+        char addr[len];
+        inet_ntop(AF_INET, &(((struct sockaddr_in*)&name)->sin_addr), addr, len);
+        ESP_LOGI("RUN_TCP_ACCEPT", "accepting : %s", addr);
         accept_handle->client->socket = rv;
 
         rv = uv_remove_handle(accept_handle->loop->loop, handle);
