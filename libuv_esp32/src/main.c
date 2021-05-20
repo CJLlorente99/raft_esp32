@@ -55,10 +55,10 @@ void app_main(void)
     vTaskDelay(5000/portTICK_RATE_MS);
 
     // xTaskCreate(main_signal, "startup", 16384, NULL, 5, NULL);
-    // xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
+    xTaskCreate(main_timer, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_tcp, "startup", 16384, NULL, 5, NULL);
     // xTaskCreate(main_fs, "startup", 32768, NULL, 5, NULL);
-    xTaskCreate(main_everything_client, "startup", 32768, NULL, 5, NULL);
+    // xTaskCreate(main_everything_client, "startup", 32768, NULL, 5, NULL);
     // xTaskCreate(main_everything_server, "startup", 32768, NULL, 5, NULL);
 
 }
