@@ -40,7 +40,7 @@ int
 uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr, unsigned int flags){
     int rv;
 
-    // ESP_LOGI("bind","");
+    ESP_LOGI("bind","");
     rv = bind(handle->socket, addr, sizeof(struct sockaddr));
     if(rv != 0){
         ESP_LOGE("run_bind_handle", "Socket unable to bind in run_bind_handle: errno %d", errno);
@@ -58,14 +58,14 @@ run_connect_handle(uv_handle_t* handle){
     int rv;
     uv_connect_t* connect_handle = (uv_connect_t*)handle;
 
-    // ESP_LOGI("run_connect_handle","entering");
+    ESP_LOGI("run_connect_handle","entering");
 
     rv = connect(connect_handle->tcp->socket, &connect_handle->dest_sockaddr, sizeof(struct sockaddr));
     connect_handle->status = rv;
     if(rv != 0){
         if(errno != 120 && errno != 127){
             ESP_LOGE("run_connect_handle", "Error during connect in run_connect_handle: errno %d", errno);
-            // ESP_LOGI("run_connect_handle","exiting");
+            ESP_LOGI("run_connect_handle","exiting");
             return;
         } else{
             connect_handle->status = 0;
@@ -85,7 +85,7 @@ run_connect_handle(uv_handle_t* handle){
 
     remove_req_from_stream((uv_stream_t*)connect_handle->tcp, handle);
 
-    // ESP_LOGI("run_connect_handle","exiting");
+    ESP_LOGI("run_connect_handle","exiting");
 }
 
 static handle_vtbl_t connect_handle_vtbl = {
@@ -96,7 +96,7 @@ int
 uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle, const struct  sockaddr* addr, uv_connect_cb cb){
     int rv;
 
-    // ESP_LOGI("connect","");
+    ESP_LOGI("connect","");
 
     req->req.loop = handle->loop;
     req->req.type = UV_UNKNOWN_HANDLE;

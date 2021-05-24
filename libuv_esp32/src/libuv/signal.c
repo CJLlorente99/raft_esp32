@@ -5,7 +5,7 @@ static void IRAM_ATTR signal_isr(void* args);
 /* Run function, vtbl and uv_signal */
 static void
 run_signal(uv_handle_t* handle){
-    // ESP_LOGI("run_signal","entering");
+    ESP_LOGI("run_signal","entering");
     uv_signal_t* signal = (uv_signal_t*) handle;
     if(signal->intr_bit){
         handle->data = signal->data;
@@ -13,7 +13,7 @@ run_signal(uv_handle_t* handle){
         signal->intr_bit = 0;
     }
 
-    // ESP_LOGI("run_signal","exiting");
+    ESP_LOGI("run_signal","exiting");
 }
 
 static handle_vtbl_t signal_vtbl = {

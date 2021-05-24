@@ -26,12 +26,12 @@
 
 /* RAFT */
 
-#define SERVERIP "192.168.0.201"
-#define ID 1
+// #define SERVERIP "192.168.0.201"
+// #define ID 1
 // #define SERVERIP "192.168.0.202"
 // #define ID 2
-// #define SERVERIP "192.168.0.203"
-// #define ID 3
+#define SERVERIP "192.168.0.203"
+#define ID 3
 
 /// Some global constants
 
