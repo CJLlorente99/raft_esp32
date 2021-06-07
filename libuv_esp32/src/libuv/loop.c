@@ -137,14 +137,13 @@ uv_now(const uv_loop_t* loop){
 }
 
 int
-uv_run (uv_loop_t* loop, uv_run_mode mode){ // uv_run_mode is not neccesary as only one mode is used in raft
+uv_run (uv_loop_t* loop, uv_run_mode mode){
     portTickType xLastTime = xTaskGetTickCount();
     const portTickType xFrequency = LOOP_RATE_MS/portTICK_RATE_MS;
     ESP_LOGI("uv_run", "Entering uv_run");
     loop->loop->loop_is_starting = 1;
     while(true){
-        // xLastTime = xTaskGetTickCount();
-        
+       
         fsm_fire(loop->fsm);
 
         /* Configure timer wakeup for light sleep (does not reset anything) */
