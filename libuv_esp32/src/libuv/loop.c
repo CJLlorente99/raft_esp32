@@ -41,7 +41,7 @@ run_handlers (fsm_t* this){
     int j = 0;
     for(int i = 0; i < p_this->n_active_handlers; i++){
         if(p_this->active_handlers[i]->remove){
-            // free(p_this->active_handlers[i]);
+            free(p_this->active_handlers[i]);
         } else{
             p_this->active_handlers[j++] = p_this->active_handlers[i];
         }
@@ -55,7 +55,7 @@ run_handlers (fsm_t* this){
     uv_update_time(p_this);
     p_this->last_n_active_handlers = p_this->n_active_handlers;
     for(int i = 0; i < p_this->last_n_active_handlers; i++){
-        if(p_this->active_handlers[i]->active){
+        if(p_this->active_handlers[i]->active && !p_this->active_handlers[i]->remove){
             handle_run(p_this->active_handlers[i]);
         }
         p_this->n_handlers_run++;

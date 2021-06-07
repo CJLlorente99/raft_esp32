@@ -71,7 +71,7 @@ static void uvTcpIncomingCloseCb(struct uv_handle_s *handle)
     if (incoming->handshake.address.base != NULL) {
         HeapFree(incoming->handshake.address.base);
     }
-    HeapFree(incoming->tcp);
+    // HeapFree(incoming->tcp);
     HeapFree(incoming);
     UvTcpMaybeFireCloseCb(t);
 }
@@ -234,7 +234,8 @@ static int uvTcpIncomingStart(struct uvTcpIncoming *incoming)
     return 0;
 
 err_after_tcp_init:
-    uv_close((uv_handle_t *)incoming->tcp, (uv_close_cb)HeapFree);
+    // uv_close((uv_handle_t *)incoming->tcp, (uv_close_cb)HeapFree);
+    uv_close((uv_handle_t *)incoming->tcp, NULL);
     return rv;
 }
 

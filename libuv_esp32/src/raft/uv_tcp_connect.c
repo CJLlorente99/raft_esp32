@@ -77,7 +77,7 @@ static void uvTcpConnectUvCloseCb(struct uv_handle_s *handle)
     struct UvTcp *t = connect->t;
     assert(connect->status != 0);
     assert(handle == (struct uv_handle_s *)connect->tcp);
-    HeapFree(connect->tcp);
+    // HeapFree(connect->tcp);
     connect->tcp = NULL;
     uvTcpConnectFinish(connect);
     UvTcpMaybeFireCloseCb(t);
@@ -189,7 +189,8 @@ static int uvTcpConnectStart(struct uvTcpConnect *r, const char *address)
     return 0;
 
 err_after_tcp_init:
-    uv_close((uv_handle_t *)r->tcp, (uv_close_cb)HeapFree);
+    // uv_close((uv_handle_t *)r->tcp, (uv_close_cb)HeapFree);
+    uv_close((uv_handle_t *)r->tcp, NULL);
 err_after_encode_handshake:
     HeapFree(r->handshake.base);
 err:

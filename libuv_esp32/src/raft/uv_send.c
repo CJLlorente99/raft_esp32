@@ -158,7 +158,7 @@ static void uvClientDisconnectCloseCb(struct uv_handle_s *handle)
     assert(c->old_stream != NULL);
     assert(c->stream == NULL);
     assert(handle == (struct uv_handle_s *)c->old_stream);
-    HeapFree(c->old_stream);
+    // HeapFree(c->old_stream);
     c->old_stream = NULL;
     if (c->closing) {
         uvClientMaybeDestroy(c);
@@ -199,6 +199,8 @@ static void uvSendWriteCb(struct uv_write_s *write, const int status)
     }
 
     uvSendDestroy(send);
+
+    ESP_LOGI("uvSendWriteCb","");
 
     if (req->cb != NULL) {
         req->cb(req, cb_status);

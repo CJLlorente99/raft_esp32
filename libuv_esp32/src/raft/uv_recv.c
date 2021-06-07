@@ -108,7 +108,7 @@ static void uvServerDestroy(struct uvServer *s)
         HeapFree(s->payload.base);
     }
     HeapFree(s->address);
-    HeapFree(s->stream);
+    // HeapFree(s->stream);
 }
 
 /* Invoked to initialize the read buffer for the next asynchronous read on the
@@ -384,7 +384,8 @@ static void uvRecvAcceptCb(struct raft_uv_transport *transport,
     rv = uvAddServer(uv, id, address, stream);
     if (rv != 0) {
         tracef("add server: %s", errCodeToString(rv));
-        uv_close((struct uv_handle_s *)stream, (uv_close_cb)HeapFree);
+        // uv_close((struct uv_handle_s *)stream, (uv_close_cb)HeapFree);
+        uv_close((struct uv_handle_s *)stream, NULL);
     }
 }
 
